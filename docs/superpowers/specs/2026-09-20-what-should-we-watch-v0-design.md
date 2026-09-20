@@ -47,8 +47,8 @@ Origin: the "Tonight" artifact (https://claude.ai/artifact/BcsmvgSHbxmxXs3FQUShv
 - **LLM:** Azure OpenAI reasoning models. Default `gpt-5.4-mini` at medium effort; `gpt-5.4-nano` fallback. Structured outputs (JSON schema). Embeddings: `text-embedding-3-large` (or the Azure equivalent available in the region).
 - **Auth:** native Sign in with Apple and Google Sign-In SDKs in the app → identity token → API verifies against Apple/Google JWKS → API issues its own ES256 access token (15 min) + rotating refresh token (30 days, hashed at rest, reuse detection).
 - **Secrets:** Azure Key Vault, accessed by managed identity. No secrets in the repo, ever.
-- **Infra:** Bicep deployed with the Azure Developer CLI (`azd`). One environment `dev` in v0.
-- **CI:** GitHub Actions (lint, typecheck, tests on every PR). EAS Build for mobile binaries.
+- **Infra:** Bicep deployed with the Azure Developer CLI (`azd`). Two environments, `dev` and `prod`, in the `manali` subscription.
+- **CI/CD:** GitHub Actions with a `dev` → `main` release flow (see §10). EAS Build for mobile binaries.
 
 ### Repo layout (monorepo, github.com/manali-co/what-should-we-watch)
 
@@ -163,11 +163,20 @@ Quality bar (measured on a mid-range Android and an iPhone two generations old):
 
 Three independent semver streams: `api` (also `/v1` path), `mobile` (app version + build number), `recs` (package version, stamped on every session). Conventional commits; changelogs per package; release-please.
 
+### Branching and CI/CD
+
+- **Branches:** `feature/*` → PR into `dev` → PR from `dev` into `main`. `main` is release-only. Both `dev` and `main` are protected: PR required, CI green required, linear history.
+- **CI on every PR:** lint, typecheck, unit and contract tests for every package touched (path-filtered so a mobile-only PR does not run the Python suite). Preview builds of the mobile app via EAS on `dev` PRs when `apps/mobile` changes.
+- **Merge to `dev`:** deploys API, catalog jobs and infra to the Azure **dev** environment (`rg-wsww-dev`) with `azd deploy`. Mobile: an EAS development build published to the internal channel (over-the-air update when only JS changed).
+- **Merge to `main` (release):** release-please opens or updates a release PR that bumps each changed package's version and changelog. Merging that PR tags `api-vX.Y.Z`, `recs-vX.Y.Z`, `mobile-vX.Y.Z`; the tag workflow deploys to the Azure **prod** environment (`rg-wsww-prod`) and runs EAS production builds submitted to TestFlight and Play internal testing.
+- **Environments:** two Azure environments in the `manali` subscription, `dev` and `prod`, same Bicep, different parameters. Secrets per environment in Key Vault; GitHub Actions authenticates with OIDC federated credentials (no long-lived Azure secrets in GitHub).
+- **Rollback:** redeploy the previous tag. Cosmos schema changes are additive only in v0.
+
 **1.0.0 criteria:** live on both stores; follow-up loop closing for real users; crash-free sessions ≥ 99.5% over 30 days; every screen in both themes with no accessibility errors; recs evaluation score at or above the threshold set from data; zero P1 bugs open; TMDB-free and attribution correct.
 
 ## 11. Build order (sub-projects, each with its own plan)
 
-1. **Foundation:** repo, workspaces, CI, infra (Functions, Cosmos, Blob, Key Vault), auth endpoints, `/me`, export, delete.
+1. **Foundation:** repo, workspaces, CI/CD with the dev → main release flow, infra for dev and prod (Functions, Cosmos, Blob, Key Vault), auth endpoints, `/me`, export, delete.
 2. **Catalog:** provider client, initial US load, daily sync, poster pipeline, embeddings.
 3. **Recs:** `packages/recs`, `/sessions` and `/more`, evaluation harness.
 4. **Mobile:** design tokens, onboarding, mood screen, deck, shortlist, settings.
