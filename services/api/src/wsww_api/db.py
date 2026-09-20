@@ -65,8 +65,12 @@ _client: Any = None
 
 
 def get_container(name: str) -> ContainerLike:
-    """Return a real Cosmos container using managed identity. Imported lazily so
-    unit tests never require the Cosmos SDK to be configured."""
+    """Return a Cosmos container proxy. The underlying client is built on first
+    use (managed identity), so importing the app never requires Cosmos config."""
+    return _LazyCosmosContainer(name)
+
+
+def _resolve_container(name: str) -> Any:
     global _client
     from azure.cosmos import CosmosClient  # noqa: PLC0415
     from azure.identity import DefaultAzureCredential  # noqa: PLC0415
@@ -76,6 +80,31 @@ def get_container(name: str) -> ContainerLike:
         _client = CosmosClient(settings.cosmos_endpoint, DefaultAzureCredential())
     db = _client.get_database_client(settings.cosmos_database)
     return _CosmosContainer(db.get_container_client(name))
+
+
+class _LazyCosmosContainer:
+    def __init__(self, name: str) -> None:
+        self._name = name
+        self._inner: ContainerLike | None = None
+
+    def _c(self) -> ContainerLike:
+        if self._inner is None:
+            self._inner = _resolve_container(self._name)
+        return self._inner
+
+    def upsert(self, item: dict[str, Any]) -> dict[str, Any]:
+        return self._c().upsert(item)
+
+    def read(self, id: str, pk: str) -> dict[str, Any] | None:
+        return self._c().read(id, pk)
+
+    def delete(self, id: str, pk: str) -> None:
+        self._c().delete(id, pk)
+
+    def query(
+        self, sql: str, params: list[dict[str, Any]], pk: str | None = None
+    ) -> list[dict[str, Any]]:
+        return self._c().query(sql, params, pk)
 
 
 class _CosmosContainer:
