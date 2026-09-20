@@ -28,6 +28,9 @@ def build_deps() -> Deps:
 
 
 def _build_signer(settings: Settings) -> TokenSigner:
+    from .auth.tokens import SigningKey
+
+    key: SigningKey
     if settings.keyvault_uri:
         from .auth.kv_signer import KeyVaultSigningKey
 

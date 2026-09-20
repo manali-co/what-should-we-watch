@@ -64,9 +64,25 @@ class TokenSigner:
         now = int(time.time())
         payload = {"sub": user_id, "iss": ISSUER, "iat": now, "exp": now + self._ttl}
         signing = self._key.private_pem()
-        if signing is None:  # pragma: no cover - Key Vault path handled in kv_signer
-            raise RuntimeError("Remote signing not wired for local issue path.")
-        return jwt.encode(payload, signing, algorithm="ES256")
+        if signing is not None:
+            return jwt.encode(payload, signing, algorithm="ES256")
+        return self._sign_remote(payload)
+
+    def _sign_remote(self, payload: dict[str, Any]) -> str:
+        import base64
+        import json
+
+        def b64(raw: bytes) -> str:
+            return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+        header = {"alg": "ES256", "typ": "JWT"}
+        signing_input = (
+            b64(json.dumps(header, separators=(",", ":")).encode())
+            + "."
+            + b64(json.dumps(payload, separators=(",", ":")).encode())
+        )
+        signature = self._key.sign(signing_input.encode())
+        return signing_input + "." + b64(signature)
 
     def verify_access(self, token: str) -> str:
         try:
