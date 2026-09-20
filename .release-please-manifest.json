@@ -1,0 +1,5 @@
+{
+  "services/api": "0.1.0",
+  "packages/recs": "0.0.0",
+  "apps/mobile": "0.0.0"
+}
