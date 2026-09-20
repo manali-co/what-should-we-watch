@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+uv.lock
+# Node
+node_modules/
+# Azure / Functions
+.azure/
+local.settings.json
+__blobstorage__/
+__queuestorage__/
+__azurite_db*__.json
+bin/
+obj/
+# OS/editor
+.DS_Store
