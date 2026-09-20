@@ -6,14 +6,14 @@ in-memory double and Cosmos honor. v0 users have exactly one provider."""
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from ..db import ContainerLike
 from ..models import Provider, User
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _provider_key(provider: str, subject: str) -> str:

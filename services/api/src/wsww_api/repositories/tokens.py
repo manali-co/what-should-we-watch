@@ -1,13 +1,14 @@
 """Refresh-token persistence: hashes only, grouped into families for rotation."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 
 from ..db import ContainerLike
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class TokensRepo:
@@ -26,7 +27,7 @@ class TokensRepo:
             }
         )
 
-    def get(self, token_hash: str, user_id: str) -> dict | None:
+    def get(self, token_hash: str, user_id: str) -> dict[str, Any] | None:
         return self._c.read(token_hash, user_id)
 
     def mark_used(self, token_hash: str, user_id: str) -> None:
@@ -45,3 +46,15 @@ class TokensRepo:
         for row in rows:
             row["usedAt"] = _now()
             self._c.upsert(row)
+
+    def find_by_hash(self, token_hash: str) -> dict[str, Any] | None:
+        rows = self._c.query(
+            "SELECT * FROM c WHERE c.id = @id",
+            [{"name": "@id", "value": token_hash}],
+            pk=None,
+        )
+        return rows[0] if rows else None
+
+    def list_for_user(self, user_id: str) -> list[dict[str, Any]]:
+        return self._c.query("SELECT * FROM c WHERE c.userId = @u",
+                             [{"name": "@u", "value": user_id}], pk=user_id)
