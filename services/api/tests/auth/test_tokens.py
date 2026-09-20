@@ -1,7 +1,6 @@
 import time
 
 import pytest
-
 from wsww_api.auth.tokens import LocalEcKey, TokenSigner
 from wsww_api.errors import AppError
 

@@ -34,7 +34,9 @@ def jwks_for(rsa_key: rsa.RSAPrivateKey):
 
 @pytest.fixture
 def mint(rsa_key: rsa.RSAPrivateKey):
-    def _mint(*, iss: str, aud: str, sub: str, kid: str = "test-kid", exp_delta: int = 3600, **extra):
+    def _mint(
+        *, iss: str, aud: str, sub: str, kid: str = "test-kid", exp_delta: int = 3600, **extra
+    ):
         payload = {"iss": iss, "aud": aud, "sub": sub, "iat": int(time.time()),
                    "exp": int(time.time()) + exp_delta, **extra}
         return jwt.encode(payload, rsa_key, algorithm="RS256", headers={"kid": kid})

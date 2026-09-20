@@ -1,5 +1,4 @@
 import pytest
-
 from wsww_api.auth.jwks import APPLE_ISS, verify_apple, verify_google
 from wsww_api.errors import AppError
 
