@@ -2,20 +2,19 @@
 // Ported 1:1 from the design's Screens.jsx (Settings). Appearance/reduce-motion/accounts/
 // follow-up are local UI state here; the parent wires the real ones.
 import { useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { Body, Headline, Screen, TopRow } from "../primitives";
-import { Button, Segmented, Switch } from "../controls";
+import { Segmented, Switch } from "../controls";
 import { ListRow, SectionLabel } from "../surfaces";
 import { useTheme } from "../tokens";
 import { SERVICES } from "../data";
 
-export function SettingsScreen({ services, onToggleService, onReset, onLogout, country = "United States", faceId, onToggleFaceId, bioLabel = "Face ID" }: {
+export function SettingsScreen({ services, onToggleService, onReset, onLogout, country = "United States", faceId, onToggleFaceId, bioLabel = "Face ID", provider, email }: {
   services: string[]; onToggleService: (id: string) => void; onReset: () => void; onLogout?: () => void; country?: string;
-  faceId?: boolean; onToggleFaceId?: (v: boolean) => void; bioLabel?: string;
+  faceId?: boolean; onToggleFaceId?: (v: boolean) => void; bioLabel?: string; provider?: "google" | "apple" | "email"; email?: string;
 }) {
   const t = useTheme();
   const [expanded, setExpanded] = useState(false);
-  const [signedIn, setSignedIn] = useState<"apple" | "google" | null>(null);
   const [themePref, setThemePref] = useState("system");
   const [reducedMotion, setReducedMotion] = useState(false);
   const [followUp, setFollowUp] = useState(true);
@@ -49,8 +48,9 @@ export function SettingsScreen({ services, onToggleService, onReset, onLogout, c
           : null}
 
         <SectionLabel>Accounts</SectionLabel>
-        <ListRow title="Apple" value={signedIn === "apple" ? "Signed in" : undefined} trailing={signedIn !== "apple" ? <Button size="sm" variant="outline" onPress={() => setSignedIn("apple")}>Connect</Button> : null} />
-        <ListRow title="Google" value={signedIn === "google" ? "Signed in" : undefined} trailing={signedIn !== "google" ? <Button size="sm" variant="outline" onPress={() => setSignedIn("google")}>Connect</Button> : null} last />
+        {email ? <ListRow title="Signed in as" subtitle={email} value={provider === "google" ? "Google" : provider === "apple" ? "Apple" : "Email"} /> : null}
+        <ListRow title="Apple" trailing={<Text style={[t.type.micro, { color: t.color.inkTertiary }]}>COMING SOON</Text>} />
+        <ListRow title="Google" value={provider === "google" ? "Connected" : undefined} trailing={provider === "google" ? null : <Text style={[t.type.caption, { color: t.color.inkTertiary }]}>Not connected</Text>} last />
 
         <SectionLabel>Appearance</SectionLabel>
         <View style={{ paddingTop: 6, paddingBottom: 14 }}>
