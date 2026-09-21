@@ -13,6 +13,11 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.per-file-ignores]
+# The recs engine holds a long LLM prompt as a triple-quoted string; wrapping it
+# would change the prompt text, so line-length is not enforced there.
+"**/recs_engine.py" = ["E501"]
+
 [tool.mypy]
 python_version = "3.12"
 strict = true

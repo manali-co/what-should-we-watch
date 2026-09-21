@@ -15,4 +15,9 @@ class TasteRepo:
         return (row or {}).get("notes", "") if row else ""
 
     def set_notes(self, user_id: str, notes: str) -> None:
-        self._c.upsert({"id": user_id, "_pk": user_id, "userId": user_id, "notes": notes, "updatedAt": int(time.time())})
+        self._c.upsert(
+            {
+                "id": user_id, "_pk": user_id, "userId": user_id,
+                "notes": notes, "updatedAt": int(time.time()),
+            }
+        )
