@@ -1,6 +1,6 @@
 // Sheet — bottom sheet used by the guest gate and the confirm flows (log out / delete / export).
 // Ported from the design's <Sheet>: dim backdrop, rounded top, slide-up, grab handle, tap-out to close.
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { Animated, Modal, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Headline } from "./primitives";
@@ -14,19 +14,23 @@ export function Sheet({ open, title, onClose, children }: {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const anim = useRef(new Animated.Value(0)).current; // 0 closed → 1 open
+  // Stay mounted through the close animation: the Modal hides on `visible`, so if we drove it
+  // straight off `open` the slide-down would run after it vanished.
+  const [mounted, setMounted] = useState(open);
 
   useEffect(() => {
+    if (open) setMounted(true);
     Animated.spring(anim, {
       toValue: open ? 1 : 0, useNativeDriver: useDriver, damping: 24, stiffness: 240, mass: 0.9,
-    }).start();
+    }).start(({ finished }) => { if (finished && !open) setMounted(false); });
   }, [open, anim]);
 
   const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [560, 0] });
 
   return (
-    <Modal visible={open} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={{ flex: 1, justifyContent: "flex-end" }}>
-        <Animated.View style={{ ...StyleSheetAbsolute, backgroundColor: "rgba(0,0,0,0.55)", opacity: anim }}>
+        <Animated.View style={{ ...StyleSheetAbsolute, backgroundColor: t.color.scrim, opacity: anim }}>
           <Pressable accessibilityLabel="Dismiss" style={{ flex: 1 }} onPress={onClose} />
         </Animated.View>
         <Animated.View

@@ -8,7 +8,7 @@ import { ClerkProvider, useAuth, useBiometricCredentials, useUser } from "@clerk
 import { tokenCache } from "@clerk/expo/token-cache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-import { Linking, Platform, Pressable, Share, StatusBar, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Platform, Pressable, Share, StatusBar, StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { setAuthTokenGetter } from "./src/api";
 import { publishableKey } from "./src/clerk";
@@ -131,7 +131,14 @@ function Root() {
     try { await Share.share({ message: payload, title: "Your What Should We Watch data" }); } catch { /* dismissed */ }
   };
   const deleteAccount = async () => {
-    try { await user?.delete(); } catch { /* fall through to sign-out + local wipe */ }
+    try {
+      await user?.delete();
+    } catch {
+      // Server deletion failed — do NOT wipe or sign out, or it would look deleted while
+      // the account is still alive. Keep the account screen open and tell the user.
+      Alert.alert("Couldn’t delete your account", "Something went wrong on our side. Your account is unchanged — please try again in a moment.");
+      return;
+    }
     void signOut(); AsyncStorage.removeItem(STORE).catch(() => {});
     setShowAccount(false); setGuest(false); setStarted(false); setServices([]); setOnboarded(false); setShortlist([]); setDecisions(0); setTab("tonight");
   };
@@ -166,7 +173,6 @@ function Root() {
           decisionCount={decisions}
           onBack={() => setShowAccount(false)}
           onSaveName={saveName}
-          onChangeEmail={() => { setShowAccount(false); setSignInOverlay(true); }}
           onLogout={logout}
           onDelete={deleteAccount}
           onExport={doExport}

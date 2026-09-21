@@ -14,12 +14,11 @@ type Provider = "google" | "apple" | "email";
 
 export function AccountScreen({
   name: initialName, email, provider, appleConnected, googleConnected, memberSince, decisionCount = 0,
-  onBack, onSaveName, onChangeEmail, onLogout, onDelete, onExport,
+  onBack, onSaveName, onLogout, onDelete, onExport,
 }: {
   name: string; email?: string; provider: Provider; appleConnected?: boolean; googleConnected?: boolean; memberSince?: string; decisionCount?: number;
   onBack: () => void;
   onSaveName: (name: string) => void;
-  onChangeEmail: () => void;
   onLogout: () => void;
   onDelete: () => void;
   onExport?: () => void;
@@ -65,7 +64,7 @@ export function AccountScreen({
         </View>
 
         <SectionLabel>Email</SectionLabel>
-        <ListRow title={displayEmail} subtitle="Used for codes and the export link" trailing={<Button size="sm" variant="outline" onPress={onChangeEmail}>Change</Button>} last />
+        <ListRow title={displayEmail} subtitle="Used for codes and the export link" last />
 
         <SectionLabel>Connected</SectionLabel>
         <ListRow title="Apple" subtitle={appleConnected ? "Connected" : "Sign in with Apple"} trailing={appleConnected ? checkmark : <Text style={[t.type.caption, { color: t.color.inkTertiary }]}>Not connected</Text>} />
