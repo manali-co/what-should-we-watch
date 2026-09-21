@@ -25,11 +25,7 @@ jobs:
             --template-file infra/main.bicep \
             --parameters infra/main.parameters.dev.json
       - name: Install Azure Functions Core Tools
-        run: |
-          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
-          sudo bash -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" > /etc/apt/sources.list.d/microsoft-prod.list'
-          sudo apt-get update
-          sudo apt-get install -y azure-functions-core-tools-4
+        run: npm install -g azure-functions-core-tools@4 --unsafe-perm true
       - name: Deploy functions (Flex Consumption, remote build)
         working-directory: services/api
         run: func azure functionapp publish wsww-dev-api --python --build remote
