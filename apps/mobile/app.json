@@ -1,15 +1,24 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
-    "version": "1.0.0",
+    "name": "What Should We Watch",
+    "slug": "what-should-we-watch",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "wsww",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "co.manali.wsww",
+      "buildNumber": "1",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "co.manali.wsww",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -25,6 +34,7 @@
       "expo-font",
       "expo-secure-store",
       "expo-web-browser",
+      "expo-apple-authentication",
       "@clerk/expo",
       [
         "expo-local-authentication",
@@ -32,7 +42,6 @@
           "faceIDPermission": "Use Face ID to unlock What Should We Watch."
         }
       ]
-    ],
-    "scheme": "wsww"
+    ]
   }
 }
