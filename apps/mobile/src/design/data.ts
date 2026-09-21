@@ -43,6 +43,14 @@ export const COUNTRIES = [
   "Brazil", "Mexico", "Japan", "South Korea", "New Zealand", "Spain", "Italy", "Singapore",
 ];
 
+export const COUNTRY_CODE: Record<string, string> = {
+  "United States": "us", "United Kingdom": "gb", "Canada": "ca", "Australia": "au",
+  "Ireland": "ie", "India": "in", "Germany": "de", "France": "fr", "Netherlands": "nl",
+  "Sweden": "se", "Brazil": "br", "Mexico": "mx", "Japan": "jp", "South Korea": "kr",
+  "New Zealand": "nz", "Spain": "es", "Italy": "it", "Singapore": "sg",
+};
+export const countryCode = (name?: string) => (name && COUNTRY_CODE[name]) || "us";
+
 export const thinkingLines = (services: string[], moods: string[], country: string): string[] => [
   `Checking what’s on ${services.join(", ")} in ${country} tonight`,
   "Leaving out the ones you’ve already seen",

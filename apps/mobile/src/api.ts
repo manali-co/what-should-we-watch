@@ -53,11 +53,11 @@ export function moment(): Moment {
 }
 
 export async function fetchDeck(opts: {
-  services: string[]; moods: string[]; company?: string; length?: string;
+  services: string[]; moods: string[]; company?: string; length?: string; country?: string;
 }): Promise<Film[]> {
   const mo = moment();
   const p = new URLSearchParams({
-    country: "us",
+    country: (opts.country ?? "us").toLowerCase(),
     services: opts.services.join(","),
     moods: opts.moods.join(","),
     company: opts.company ?? "",
@@ -65,12 +65,21 @@ export async function fetchDeck(opts: {
     daypart: mo.daypart, weekday: mo.weekday, is_weekend: String(mo.is_weekend),
     season: mo.season, holiday: mo.holiday, limit: "10",
   });
-  const r = await fetch(`${API_BASE}/v1/catalog/deck?${p.toString()}`, {
-    headers: await authHeaders(),
-  });
-  if (!r.ok) throw new Error(`deck ${r.status}`);
-  const data = await r.json();
-  return (data.films ?? []) as Film[];
+  // fetch has no default timeout in RN; abort a hung request so the caller can show an error
+  // instead of the user being stranded on the Thinking screen forever.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const r = await fetch(`${API_BASE}/v1/catalog/deck?${p.toString()}`, {
+      headers: await authHeaders(),
+      signal: ctrl.signal,
+    });
+    if (!r.ok) throw new Error(`deck ${r.status}`);
+    const data = await r.json();
+    return (data.films ?? []) as Film[];
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function recordDecision(d: {
