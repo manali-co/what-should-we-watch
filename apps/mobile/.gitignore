@@ -42,3 +42,10 @@ play-service-account.json
 # generated native folders
 /ios
 /android
+
+# web export + e2e artifacts
+/dist
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
