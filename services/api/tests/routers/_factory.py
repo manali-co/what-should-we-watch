@@ -25,6 +25,7 @@ def build_app(apple_map=None, google_map=None):
     deps = Deps(
         users=UsersRepo(InMemoryContainer()),
         catalog=CatalogRepo(InMemoryContainer()),
+        recs=None,
         tokens_repo=TokensRepo(InMemoryContainer()),
         signer=TokenSigner(LocalEcKey(), access_ttl_seconds=900),
         settings=Settings(apple_bundle_ids=["app.manali.wsww"], google_client_ids=["c1"]),

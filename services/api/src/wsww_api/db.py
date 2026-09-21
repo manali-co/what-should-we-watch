@@ -139,3 +139,9 @@ class _CosmosContainer:
         else:
             kwargs["enable_cross_partition_query"] = True
         return [dict(i) for i in self._c.query_items(**kwargs)]
+
+
+def get_raw_container(name: str) -> Any:
+    """Return the underlying Cosmos container client (supports query_items with
+    VectorDistance). Used by the recommendation engine for vector search."""
+    return _resolve_container(name)._c
