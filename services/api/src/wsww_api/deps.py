@@ -7,7 +7,7 @@ from typing import Any
 
 from .auth.jwks import JwksSource, ProviderIdentity
 from .auth.tokens import TokenSigner
-from .repositories import CatalogRepo, TokensRepo, UsersRepo
+from .repositories import CatalogRepo, DecisionsRepo, TasteRepo, TokensRepo, UsersRepo
 from .settings import Settings
 
 
@@ -15,6 +15,8 @@ from .settings import Settings
 class Deps:
     users: UsersRepo
     catalog: CatalogRepo
+    decisions: DecisionsRepo
+    taste: TasteRepo
     recs: Any | None
     tokens_repo: TokensRepo
     signer: TokenSigner
