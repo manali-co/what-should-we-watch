@@ -5,16 +5,16 @@ import { Body, Headline, Micro, Screen, TopRow } from "../primitives";
 import { Button } from "../controls";
 import { ListRow } from "../surfaces";
 import { Poster } from "../poster";
+import { Mascot } from "../Mascot";
 import { useTheme } from "../tokens";
 import type { Film } from "../../films";
-import { serviceLabel } from "../../films";
+import { formatRuntime, serviceLabel } from "../../films";
 
 // Each film gets a stable tint from its id (real Film has no tint field; the design assigned one).
 const TINTS = ["#3E6B6F", "#8A5A3C", "#5B3F3A", "#4F6A5A", "#6C4B6E", "#5C5A6E", "#3A4A5E", "#4A6B8A", "#7A5C48", "#8A7A4A"];
 const tintFor = (id: string) => TINTS[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % TINTS.length];
-const runtimeStr = (m?: number | null) => (m ? `${Math.floor(m / 60)} h ${m % 60} m` : "");
 const subtitleOf = (f: Film) =>
-  `${serviceLabel(f.service)} · ${runtimeStr(f.runtimeMin)}${f.leavingInDays ? ` · leaves in ${f.leavingInDays} days` : ""}`;
+  `${serviceLabel(f.service)} · ${formatRuntime(f.runtimeMin)}${f.leavingInDays ? ` · leaves in ${f.leavingInDays} days` : ""}`;
 
 export function EndScreen({ kept, onOpenShortlist, onAgain }: { kept: Film[]; onOpenShortlist: () => void; onAgain: () => void }) {
   const t = useTheme();
@@ -27,6 +27,7 @@ export function EndScreen({ kept, onOpenShortlist, onAgain }: { kept: Film[]; on
       <TopRow left={<Micro>That’s ten</Micro>} right={<Button variant="ghost" size="sm" onPress={onOpenShortlist}>Shortlist</Button>} />
 
       <View style={{ paddingTop: t.space[6], gap: t.space[3] }}>
+        <Mascot state={all.length ? "found" : "empty"} size={64} />
         <Headline size="l">{all.length ? `${yes.length} yes${maybe.length ? `, ${maybe.length} maybe` : ""}.` : "Nothing landed."}</Headline>
         <Body size="l">{all.length ? "Ranked by how sure you seemed. Tap one to watch, or keep going." : "That happens. Ten more, or a different mood?"}</Body>
       </View>

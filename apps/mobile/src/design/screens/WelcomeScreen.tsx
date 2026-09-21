@@ -3,7 +3,8 @@
 // Presentational only; emits onGetStarted.
 import { Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Blend, Body, Headline, Screen } from "../primitives";
+import { Body, Headline, Screen } from "../primitives";
+import { Mascot } from "../Mascot";
 import { Button } from "../controls";
 import { useTheme } from "../tokens";
 
@@ -19,7 +20,7 @@ export function WelcomeScreen({ onGetStarted }: { onGetStarted: () => void }) {
   return (
     <Screen padded={false}>
       <View style={{ position: "absolute", left: t.space.pageInset, right: t.space.pageInset, top: 96 }}>
-        <Blend hues={["coral", "lilac", "lagoon"]} size={44} />
+        <Mascot state="idle" size={72} />
       </View>
 
       <View style={{ position: "absolute", left: t.space.pageInset, right: t.space.pageInset, top: 178, gap: t.space[5] }}>
