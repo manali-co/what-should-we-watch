@@ -1,8 +1,9 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useBiometricCredentials, useSignIn, useSignUp, useSSO } from "@clerk/expo";
+import { useSignInWithApple } from "@clerk/expo/apple";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { font, theme } from "./theme";
@@ -14,6 +15,7 @@ export function SignIn() {
   const { signIn, fetchStatus: siFetching } = useSignIn();
   const { signUp } = useSignUp();
   const { getAvailability, signIn: bioSignIn } = useBiometricCredentials();
+  const { startAppleAuthenticationFlow } = useSignInWithApple();
   const [bioAvail, setBioAvail] = useState(false);
   useEffect(() => { getAvailability().then((a) => setBioAvail(a.isAvailable)).catch(() => setBioAvail(false)); }, []);
   const [mode, setMode] = useState<"choices" | "email" | "code">("choices");
@@ -69,6 +71,18 @@ export function SignIn() {
     } finally { setBusy(false); }
   };
 
+  const doApple = async () => {
+    setErr(null); setBusy(true);
+    try {
+      const { createdSessionId, setActive } = await startAppleAuthenticationFlow();
+      if (createdSessionId && setActive) await setActive({ session: createdSessionId });
+      // no session + no throw = user cancelled; don't show an error
+    } catch (e: unknown) {
+      if ((e as { code?: string })?.code === "ERR_REQUEST_CANCELED") return; // user tapped Cancel
+      setErr("Apple sign-in didn't go through. Try again.");
+    } finally { setBusy(false); }
+  };
+
   const doBiometric = async () => {
     setErr(null); setBusy(true);
     try {
@@ -103,11 +117,12 @@ export function SignIn() {
                 <Text style={styles.googleText}>Sign in with Face ID</Text>
               </Pressable>
             )}
-            <View style={styles.appleDisabled}>
-              <FontAwesome name="apple" size={19} color={theme.muted} />
-              <Text style={styles.appleDisabledText}>Continue with Apple</Text>
-              <View style={styles.soon}><Text style={styles.soonText}>Coming soon</Text></View>
-            </View>
+            {Platform.OS === "ios" && (
+              <Pressable style={styles.appleBtn} onPress={doApple} disabled={loading}>
+                <FontAwesome name="apple" size={19} color={theme.bg} />
+                <Text style={styles.appleText}>Continue with Apple</Text>
+              </Pressable>
+            )}
             <Pressable style={styles.google} onPress={() => oauth("oauth_google")} disabled={loading}>
               <FontAwesome name="google" size={17} color="#16171D" />
               <Text style={styles.googleText}>Continue with Google</Text>
@@ -154,10 +169,7 @@ const styles = StyleSheet.create({
   bottom: { padding: 24, paddingBottom: 34, gap: 12 },
   apple: { backgroundColor: theme.ink, borderRadius: 14, paddingVertical: 16, alignItems: "center" },
   appleText: { color: theme.bg, fontFamily: font.bodySemi, fontSize: 16 },
-  appleDisabled: { backgroundColor: theme.surface, borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10, opacity: 0.7 },
-  appleDisabledText: { color: theme.muted, fontFamily: font.bodySemi, fontSize: 16 },
-  soon: { backgroundColor: theme.surface2, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 4 },
-  soonText: { color: theme.muted, fontFamily: font.bodyMed, fontSize: 11 },
+  appleBtn: { backgroundColor: theme.ink, borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10 },
   google: { backgroundColor: "#fff", borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10 },
   googleText: { color: "#16171D", fontFamily: font.bodySemi, fontSize: 16 },
   emailBtn: { borderWidth: 1.5, borderColor: theme.line, borderRadius: 14, paddingVertical: 16, alignItems: "center" },

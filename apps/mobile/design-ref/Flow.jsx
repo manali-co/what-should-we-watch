@@ -1,6 +1,7 @@
 // Flow.jsx — Welcome, Sign in (Clerk), Tutorial coach-marks, and the edge/unhappy states.
 
 function BrandMark({ name }) {
+  // Placeholder tile for a third-party brand icon (Apple / Google). Drop the official asset in per each brand's guidelines.
   return <span aria-hidden style={{ width: 20, height: 20, borderRadius: 5, background: 'currentColor', opacity: .18, display: 'inline-flex' }} title={`${name} brand icon`} />;
 }
 
@@ -25,40 +26,46 @@ function Welcome({ app, set }) {
       </div>
       <div style={{ position: 'absolute', left: 'var(--page-inset)', right: 'var(--page-inset)', bottom: 'calc(var(--safe-bottom) + 12px)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         <Button variant="primary" size="lg" full onClick={() => set({ route: 'signin', signinMode: 'options' })}>Get started</Button>
-        <Body tone="tertiary" style={{ font: 'var(--type-caption)', textAlign: 'center' }}>Free. No card. Your taste stays yours.</Body>
+        <Button variant="ghost" full onClick={() => set({ route: 'onboarding', onboardingStep: 0, signedIn: null, guest: true })}>Continue as guest</Button>
+        <Body tone="tertiary" style={{ font: 'var(--type-caption)', textAlign: 'center' }}>Free. No card. Guests get the full loop on this phone; sign in later to decide with friends.</Body>
       </div>
     </Screen>
   );
 }
 
-// Sign in via Clerk: Apple (coming soon, disabled) · Google · email code. Modes: options → email → code → failed.
+// Sign in via Clerk: Apple (native, iOS) · Google · email code. Modes: options → email → code → failed.
+const GATE_HEAD = { group: 'Sign in to decide together.', sync: 'Sign in to keep your taste everywhere.', account: 'Sign in to manage your account.', faceid: 'Sign in to lock the app.', export: 'Sign in to export your data.' };
 function SignIn({ app, set }) {
-  const { Button, IconButton } = useC();
+  const { Button, IconButton, Toast } = useC();
+  React.useEffect(() => { if (!app.cancelToast) return; const id = setTimeout(() => set({ cancelToast: false }), 2400); return () => clearTimeout(id); }, [app.cancelToast]);
   const mode = app.signinMode || 'options';
   const [email, setEmail] = React.useState(app.email || 'manali@example.com');
   const [code, setCode] = React.useState('');
-  const done = (via) => set({ signedIn: via, route: app.sessionExpired ? 'mood' : 'onboarding', onboardingStep: 0, sessionExpired: false, signinMode: 'options' });
+  // Return path: session expiry → back to the exact deck card; gate → the screen that gated; otherwise first-run onboarding.
+  const done = (via) => set({ signedIn: via, guest: false, route: app.sessionExpired ? (app.resume ? app.resume.route : 'tonight') : app.returnTo ? app.returnTo : app.onboarded ? 'tonight' : 'onboarding', deckIndex: app.sessionExpired && app.resume ? app.resume.deckIndex : app.deckIndex, onboardingStep: 0, sessionExpired: false, signinMode: 'options', returnTo: null, resume: null, gateFeature: null });
   const back = () => set({ signinMode: mode === 'code' ? 'email' : 'options' });
   return (
     <Screen>
-      <TopRow left={mode !== 'options' ? <Button variant="ghost" size="sm" onClick={back}>Back</Button> : <Micro>{app.sessionExpired ? 'Signed out' : 'Sign in'}</Micro>} right={mode === 'options' ? <Button variant="ghost" size="sm" onClick={() => set({ route: 'onboarding', onboardingStep: 0, signedIn: null })}>Not now</Button> : null} />
+      <TopRow left={mode !== 'options' ? <Button variant="ghost" size="sm" onClick={back}>Back</Button> : <Micro>{app.sessionExpired ? 'Signed out' : 'Sign in'}</Micro>} right={mode === 'options' ? <Button variant="ghost" size="sm" onClick={() => set(app.returnTo || app.sessionExpired ? { route: app.returnTo || (app.resume ? app.resume.route : 'shortlist'), returnTo: null, gateFeature: null } : { route: 'onboarding', onboardingStep: 0, signedIn: null, guest: true })}>{app.returnTo || app.sessionExpired ? 'Not now' : 'Continue as guest'}</Button> : null} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', paddingTop: 'var(--space-7)' }}>
         {mode === 'options' && <>
-          <Headline>{app.sessionExpired ? 'You were signed out.' : 'Keep your taste, not just your phone’s.'}</Headline>
-          <Body size="l">{app.sessionExpired ? 'Your session expired. Sign in again and everything is where you left it.' : 'Sign in so what the app learns survives a new phone and works when friends join.'}</Body>
+          <Headline>{app.sessionExpired ? 'You were signed out.' : app.gateFeature ? GATE_HEAD[app.gateFeature] || 'Sign in to keep this.' : 'Keep your taste, not just your phone’s.'}</Headline>
+          <Body size="l">{app.sessionExpired ? (app.resume ? `Your session expired mid-deck. Sign in and you’re back on card ${app.resume.deckIndex + 1} of 10.` : 'Your session expired. Sign in again and everything is where you left it.') : app.gateFeature ? 'Your shortlist and taste so far merge into the account. Nothing is lost.' : 'Sign in so what the app learns survives a new phone and works when friends join.'}</Body>
           <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', paddingBottom: 'var(--space-4)' }}>
-            <Button variant="outline" size="lg" full disabled icon={<BrandMark name="Apple" />} style={{ justifyContent: 'flex-start', paddingLeft: 20 }}><span>Continue with Apple</span><span style={{ marginLeft: 'auto', font: 'var(--type-micro)', letterSpacing: 'var(--text-micro-tracking)', textTransform: 'uppercase' }}>Coming soon</span></Button>
-            <Button variant="primary" size="lg" full icon={<BrandMark name="Google" />} onClick={() => set({ signinMode: 'pending' })} style={{ justifyContent: 'flex-start', paddingLeft: 20 }}><span style={{ flex: 1, textAlign: 'center', marginRight: 26 }}>Continue with Google</span></Button>
+            <Button variant="primary" size="lg" full icon={<BrandMark name="Apple" />} onClick={() => done('apple')} style={{ justifyContent: 'flex-start', paddingLeft: 20 }}><span style={{ flex: 1, textAlign: 'center', marginRight: 26 }}>Continue with Apple</span></Button>
+            <Button variant="outline" size="lg" full icon={<BrandMark name="Google" />} onClick={() => set({ signinMode: 'pending' })} style={{ justifyContent: 'flex-start', paddingLeft: 20 }}><span style={{ flex: 1, textAlign: 'center', marginRight: 26 }}>Continue with Google</span></Button>
             <Button variant="secondary" size="lg" full onClick={() => set({ signinMode: 'email' })}>Continue with email</Button>
             <Body tone="tertiary" style={{ font: 'var(--type-caption)', textAlign: 'center', marginTop: 4 }}>By continuing you agree to the terms and privacy policy.</Body>
           </div>
+          <Toast open={!!app.cancelToast} message="No problem — nothing was saved." />
         </>}
         {mode === 'pending' && <>
           <Headline>Finishing sign-in with Google…</Headline>
           <Body size="l">A browser window opened. Come back here when it’s done.</Body>
           <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', paddingBottom: 'var(--space-4)' }}>
             <Button variant="primary" size="lg" full onClick={() => done('google')}>It’s done</Button>
-            <Button variant="ghost" full onClick={() => set({ signinMode: 'failed', signinError: 'cancelled' })}>I cancelled</Button>
+            <Button variant="ghost" full onClick={() => set(app.returnTo ? { route: app.returnTo, returnTo: null, gateFeature: null, signinMode: 'options', cancelToast: true } : { signinMode: 'options', cancelToast: true })}>I cancelled</Button>
+            <Button variant="ghost" size="sm" full onClick={() => set({ signinMode: 'failed', signinError: 'provider' })} style={{ color: 'var(--color-ink-tertiary)' }}>Simulate a provider error</Button>
           </div>
         </>}
         {mode === 'email' && <>
@@ -82,8 +89,9 @@ function SignIn({ app, set }) {
           <Body tone="tertiary" style={{ font: 'var(--type-caption)' }}>Codes expire in 10 minutes. Try 000000 to see the failure state.</Body>
         </>}
         {mode === 'failed' && <>
-          <Headline>{app.signinError === 'cancelled' ? 'Sign-in didn’t finish.' : app.signinError === 'code' ? 'That code didn’t work.' : 'We couldn’t sign you in.'}</Headline>
-          <Body size="l">{app.signinError === 'cancelled' ? 'No harm done. Nothing was saved. Try again, or use email instead.' : app.signinError === 'code' ? 'It may have expired, or a digit is off. We can send a new one.' : 'Something failed on the way back from the sign-in provider. Trying again usually fixes it.'}</Body>
+          <Headline>{app.signinError === 'code' ? 'That code didn’t work.' : 'We couldn’t sign you in.'}</Headline>
+          <Body size="l">{app.signinError === 'code' ? 'It may have expired, or a digit is off. We can send a new one.' : app.signinError === 'network' ? 'The sign-in service didn’t answer. Check your connection and try again.' : 'Google sent us back without a session. Not something you did; trying again usually fixes it.'}</Body>
+          <Micro>{app.signinError === 'code' ? 'Code rejected' : app.signinError === 'network' ? 'No connection' : 'Provider error · ref 4a7f'}</Micro>
           <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', paddingBottom: 'var(--space-4)' }}>
             <Button variant="primary" size="lg" full onClick={() => set({ signinMode: app.signinError === 'code' ? 'code' : 'options' })}>{app.signinError === 'code' ? 'Send a new code' : 'Try again'}</Button>
             {app.signinError !== 'code' && <Button variant="secondary" size="lg" full onClick={() => set({ signinMode: 'email' })}>Use email instead</Button>}
@@ -115,7 +123,7 @@ function Tutorial({ app, set }) {
   }, [reduced]);
   const t = TUT[step];
   const film = D.films[(app.deck || [])[app.deckIndex || 0] ? D.films.findIndex(f => f.id === app.deck[app.deckIndex || 0]) : 0];
-  const dismiss = () => set({ route: 'deck', tutorialSeen: true });
+  const dismiss = () => set({ route: app.tutorialReturn || 'deck', tutorialSeen: true, tutorialReturn: null });
   const ghostT = out && t.kind ? `translate(${t.x}px, ${t.y}px) rotate(${Math.max(-12, Math.min(12, t.x * .06))}deg)` : 'translate(0,0) rotate(0)';
   return (
     <div style={{ position: 'absolute', inset: 0 }} onPointerDown={dismiss}>
@@ -218,10 +226,11 @@ function SessionExpired({ app, set }) {
         <Blend hues={['coral', 'lilac', 'lagoon']} size={28} />
         <Micro>Signed out</Micro>
         <Headline size="l">Your session expired.</Headline>
-        <Body size="l">Nothing is lost. Sign in again and the shortlist, taste and tonight’s deck are where you left them.</Body>
+        <Body size="l">{app.resume ? `You were on card ${app.resume.deckIndex + 1} of 10. Your decisions so far are saved on this phone; sign in and the deck picks up right there.` : 'Nothing is lost. Sign in again and the shortlist, taste and tonight’s deck are where you left them.'}</Body>
+        {app.resume && <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>{(app.deck || []).map((id, i) => <span key={id} style={{ width: 22, height: 33, borderRadius: 4, background: i < app.resume.deckIndex ? 'var(--color-ink-tertiary)' : i === app.resume.deckIndex ? 'var(--color-ink)' : 'var(--color-surface-raised)' }} />)}</div>}
       </div>
       <div style={{ padding: '0 0 calc(var(--safe-bottom) + 12px)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        <Button variant="primary" size="lg" full onClick={() => set({ route: 'signin', signinMode: 'options', sessionExpired: true })}>Sign in</Button>
+        <Button variant="primary" size="lg" full onClick={() => set({ route: 'signin', signinMode: 'options', sessionExpired: true })}>Sign in{app.resume ? ' and keep going' : ''}</Button>
         <Button variant="ghost" full onClick={() => set({ route: 'shortlist' })}>Just show my shortlist</Button>
       </div>
     </Screen>
@@ -271,7 +280,7 @@ function CountryPicker({ app, set }) {
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search countries" aria-label="Search countries" style={{ appearance: 'none', border: 0, background: 'var(--color-surface)', color: 'var(--color-ink)', font: 'var(--type-body-l)', padding: '12px 16px', borderRadius: 'var(--radius-md)', outline: 'none', width: '100%', marginTop: 'var(--space-2)' }} />
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginTop: 'var(--space-2)', maskImage: 'linear-gradient(to bottom, #000 92%, transparent)' }}>
-        {list.map((c, i) => <ListRow key={c} title={c} trailing={(app.country || '') === c ? <span style={{ font: 'var(--type-label)' }}>✓</span> : null} onClick={() => set({ country: c, countryManual: true, route: 'onboarding', onboardingStep: 0 })} last={i === list.length - 1} />)}
+        {list.map((c, i) => <ListRow key={c} title={c} trailing={(app.country || '') === c ? <span style={{ font: 'var(--type-label)' }}>✓</span> : null} onClick={() => set(app.onboarded ? { country: c, countryManual: true, route: 'tonight', lineupChange: (app.deck && (app.deckIndex || 0) < app.deck.length && c !== (app.country || 'United States')) ? { kind: 'country', country: c, affected: 4 } : null } : { country: c, countryManual: true, route: 'onboarding', onboardingStep: 0 })} last={i === list.length - 1} />)}
         {!list.length && <Body tone="tertiary" style={{ padding: '16px 0' }}>No match. We currently support 18 countries; more are coming.</Body>}
       </div>
     </Screen>

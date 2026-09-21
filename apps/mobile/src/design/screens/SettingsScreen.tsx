@@ -49,7 +49,7 @@ export function SettingsScreen({ services, onToggleService, onReset, onLogout, c
 
         <SectionLabel>Accounts</SectionLabel>
         {email ? <ListRow title="Signed in as" subtitle={email} value={provider === "google" ? "Google" : provider === "apple" ? "Apple" : "Email"} /> : null}
-        <ListRow title="Apple" trailing={<Text style={[t.type.micro, { color: t.color.inkTertiary }]}>COMING SOON</Text>} />
+        <ListRow title="Apple" value={provider === "apple" ? "Connected" : undefined} trailing={provider === "apple" ? null : <Text style={[t.type.caption, { color: t.color.inkTertiary }]}>Not connected</Text>} />
         <ListRow title="Google" value={provider === "google" ? "Connected" : undefined} trailing={provider === "google" ? null : <Text style={[t.type.caption, { color: t.color.inkTertiary }]}>Not connected</Text>} last />
 
         <SectionLabel>Appearance</SectionLabel>
@@ -80,7 +80,7 @@ export function SettingsScreen({ services, onToggleService, onReset, onLogout, c
         {onLogout ? <ListRow title="Log out" onPress={onLogout} /> : null}
         <ListRow title="Delete account" destructive onPress={() => {}} last />
 
-        <Body tone="tertiary" style={[t.type.caption, { marginTop: t.space[6] }]}>What Should We Watch 1.0 · Availability data is checked nightly for your country.</Body>
+        <Body tone="tertiary" style={[t.type.caption, { marginTop: t.space[6] }]}>What Should We Watch 0.1.0 · Availability data is checked nightly for your country.</Body>
       </ScrollView>
     </Screen>
   );
