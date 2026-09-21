@@ -6,6 +6,7 @@ import {
 } from "@expo-google-fonts/figtree";
 import { useEffect, useState } from "react";
 import { Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Film } from "./src/films";
 import { Shortlist } from "./src/Shortlist";
 import { Taste } from "./src/Taste";
@@ -36,7 +37,8 @@ export default function App() {
     return <View style={[styles.root, styles.center]}><Text style={{ color: theme.muted }}>…</Text></View>;
 
   return (
-    <View style={styles.root}>
+    <SafeAreaProvider>
+    <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
       <StatusBar barStyle="light-content" />
       <View style={{ flex: 1 }}>
         {tab === "tonight" && <Tonight onKeep={addToShortlist} />}
@@ -55,7 +57,8 @@ export default function App() {
           ),
         )}
       </View>
-    </View>
+    </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 

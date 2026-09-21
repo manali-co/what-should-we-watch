@@ -24,7 +24,7 @@ export function Taste({ decisions }: { decisions: number }) {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingTop: 64, paddingHorizontal: 22, paddingBottom: 120 },
+  scroll: { paddingTop: 20, paddingHorizontal: 22, paddingBottom: 120 },
   kicker: { color: theme.muted, fontSize: 13, letterSpacing: 1, textTransform: "uppercase" },
   h1: { color: theme.ink, fontSize: 44, fontWeight: "800", letterSpacing: -1, marginTop: 8, marginBottom: 12 },
   note: { borderLeftWidth: 3, borderLeftColor: theme.moodHues[0], paddingLeft: 14, paddingVertical: 4 },
