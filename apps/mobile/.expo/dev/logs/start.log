@@ -327,3 +327,21 @@
 {"_e":"metro:config","_t":1789961099399,"serverRoot":"../../../../..","projectRoot":"../../..","exporting":false,"flags":{"autolinkingModuleResolution":true,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
 {"_e":"expo:dev-tools-plugin:load","_t":1789961099530,"plugins":[]}
 {"_e":"metro:instantiate","_t":1789961100145,"atlas":false,"workers":6,"host":"::","port":8082}
+{"_e":"metro:bundling:started","_t":1789961112259,"id":"1","platform":"web","environment":null,"entry":"apps/mobile/index.ts"}
+{"_e":"metro:bundling:done","_t":1789961115868,"id":"1","total":692,"ms":3609.442209}
+{"_e":"metro:client_log","_t":1789961115987,"level":"info","data":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"]}
+{"_e":"metro:client_log","_t":1789961115988,"level":"log","data":["Running application \"main\" with appParams:\n","{\"hydrate\": undefined, \"rootTag\": \"#root\"}","\nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."]}
+{"_e":"metro:client_log","_t":1789961117786,"level":"warn","data":["Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview"]}
+{"_e":"metro:bundling:started","_t":1789961244360,"id":"8","platform":"ios","environment":null,"entry":"apps/mobile/index.ts"}
+{"_e":"metro:bundling:done","_t":1789961248577,"id":"8","total":1040,"ms":4216.4165}
+{"_e":"metro:client_log","_t":1789961249429,"level":"warn","data":["Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview"]}
+{"_e":"metro:bundling:started","_t":1789961291407,"id":"a","platform":"ios","environment":null,"entry":"apps/mobile/index.ts"}
+{"_e":"metro:bundling:done","_t":1789961291453,"id":"a","total":1,"ms":46.372667}
+{"_e":"metro:client_log","_t":1789961292263,"level":"warn","data":["Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview"]}
+{"_e":"root:init","_t":1789961408774,"format":"v0-jsonl","version":"57.0.26"}
+{"_e":"env:mode","_t":1789961408774,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1789961408776,"mode":"development","files":["../../../.env.local"],"env":{"EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY":"pk_test_YmVsb3ZlZC1jaWNhZGEtNjkyMi5jbGVyay5hY2NvdW50cy5kZXYk"}}
+{"_e":"devserver:start","_t":1789961408970,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../../../app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1789961409516,"serverRoot":"../../../../..","projectRoot":"../../..","exporting":false,"flags":{"autolinkingModuleResolution":true,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1789961409622,"plugins":[]}
+{"_e":"metro:instantiate","_t":1789961410047,"atlas":false,"workers":6,"host":"::","port":8082}

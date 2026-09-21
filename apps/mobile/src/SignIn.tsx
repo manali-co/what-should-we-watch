@@ -1,3 +1,4 @@
+import { FontAwesome } from "@expo/vector-icons";
 import { useSignIn, useSignUp, useSSO } from "@clerk/expo";
 import { useState } from "react";
 import {
@@ -24,7 +25,7 @@ export function SignIn() {
     try {
       const { createdSessionId, setActive } = await startSSOFlow({ strategy });
       if (createdSessionId && setActive) await setActive({ session: createdSessionId });
-      else setErr("Sign-in didn't finish. Try again.");
+      // no session + no throw = user cancelled; don't show an error
     } catch {
       setErr("That didn't go through. Try again.");
     } finally { setBusy(false); }
@@ -82,10 +83,13 @@ export function SignIn() {
       <View style={styles.bottom}>
         {mode === "choices" && (
           <>
-            <Pressable style={styles.apple} onPress={() => oauth("oauth_apple")} disabled={loading}>
-              <Text style={styles.appleText}> Continue with Apple</Text>
-            </Pressable>
+            <View style={styles.appleDisabled}>
+              <FontAwesome name="apple" size={19} color={theme.muted} />
+              <Text style={styles.appleDisabledText}>Continue with Apple</Text>
+              <View style={styles.soon}><Text style={styles.soonText}>Coming soon</Text></View>
+            </View>
             <Pressable style={styles.google} onPress={() => oauth("oauth_google")} disabled={loading}>
+              <FontAwesome name="google" size={17} color="#16171D" />
               <Text style={styles.googleText}>Continue with Google</Text>
             </Pressable>
             <Pressable style={styles.emailBtn} onPress={() => setMode("email")} disabled={loading}>
@@ -130,7 +134,11 @@ const styles = StyleSheet.create({
   bottom: { padding: 24, paddingBottom: 34, gap: 12 },
   apple: { backgroundColor: theme.ink, borderRadius: 14, paddingVertical: 16, alignItems: "center" },
   appleText: { color: theme.bg, fontFamily: font.bodySemi, fontSize: 16 },
-  google: { backgroundColor: "#fff", borderRadius: 14, paddingVertical: 16, alignItems: "center" },
+  appleDisabled: { backgroundColor: theme.surface, borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10, opacity: 0.7 },
+  appleDisabledText: { color: theme.muted, fontFamily: font.bodySemi, fontSize: 16 },
+  soon: { backgroundColor: theme.surface2, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 4 },
+  soonText: { color: theme.muted, fontFamily: font.bodyMed, fontSize: 11 },
+  google: { backgroundColor: "#fff", borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10 },
   googleText: { color: "#16171D", fontFamily: font.bodySemi, fontSize: 16 },
   emailBtn: { borderWidth: 1.5, borderColor: theme.line, borderRadius: 14, paddingVertical: 16, alignItems: "center" },
   emailBtnText: { color: theme.ink, fontFamily: font.bodySemi, fontSize: 16 },
