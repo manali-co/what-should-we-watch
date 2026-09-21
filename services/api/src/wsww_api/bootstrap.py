@@ -11,12 +11,13 @@ from .settings import Settings, get_settings
 def build_deps() -> Deps:
     from .auth.jwks import APPLE_KEYS_URL, GOOGLE_KEYS_URL
     from .db import get_container
-    from .repositories import TokensRepo, UsersRepo
+    from .repositories import CatalogRepo, TokensRepo, UsersRepo
 
     settings = get_settings()
     signer = _build_signer(settings)
     return Deps(
         users=UsersRepo(get_container("users")),
+        catalog=CatalogRepo(get_container("catalog")),
         tokens_repo=TokensRepo(get_container("refreshTokens")),
         signer=signer,
         settings=settings,

@@ -6,13 +6,14 @@ from dataclasses import dataclass
 
 from .auth.jwks import JwksSource, ProviderIdentity
 from .auth.tokens import TokenSigner
-from .repositories import TokensRepo, UsersRepo
+from .repositories import CatalogRepo, TokensRepo, UsersRepo
 from .settings import Settings
 
 
 @dataclass
 class Deps:
     users: UsersRepo
+    catalog: CatalogRepo
     tokens_repo: TokensRepo
     signer: TokenSigner
     settings: Settings
