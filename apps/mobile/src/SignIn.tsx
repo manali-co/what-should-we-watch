@@ -1,9 +1,10 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useBiometricCredentials, useSignIn, useSignUp, useSSO } from "@clerk/expo";
 import { useSignInWithApple } from "@clerk/expo/apple";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { font, theme } from "./theme";
@@ -17,7 +18,11 @@ export function SignIn() {
   const { getAvailability, signIn: bioSignIn } = useBiometricCredentials();
   const { startAppleAuthenticationFlow } = useSignInWithApple();
   const [bioAvail, setBioAvail] = useState(false);
+  // True only where the native module is linked and Apple sign-in is usable — a real
+  // iOS build. False in Expo Go and on web, so the button never leads to an unsupported flow.
+  const [appleAvail, setAppleAvail] = useState(false);
   useEffect(() => { getAvailability().then((a) => setBioAvail(a.isAvailable)).catch(() => setBioAvail(false)); }, []);
+  useEffect(() => { AppleAuthentication.isAvailableAsync().then(setAppleAvail).catch(() => setAppleAvail(false)); }, []);
   const [mode, setMode] = useState<"choices" | "email" | "code">("choices");
   const [path, setPath] = useState<"in" | "up">("in");
   const [email, setEmail] = useState("");
@@ -117,7 +122,7 @@ export function SignIn() {
                 <Text style={styles.googleText}>Sign in with Face ID</Text>
               </Pressable>
             )}
-            {Platform.OS === "ios" && (
+            {appleAvail && (
               <Pressable style={styles.appleBtn} onPress={doApple} disabled={loading}>
                 <FontAwesome name="apple" size={19} color={theme.bg} />
                 <Text style={styles.appleText}>Continue with Apple</Text>

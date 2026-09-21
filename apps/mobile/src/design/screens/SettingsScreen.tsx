@@ -9,9 +9,10 @@ import { ListRow, SectionLabel } from "../surfaces";
 import { useTheme } from "../tokens";
 import { SERVICES } from "../data";
 
-export function SettingsScreen({ services, onToggleService, onReset, onLogout, country = "United States", faceId, onToggleFaceId, bioLabel = "Face ID", provider, email }: {
+export function SettingsScreen({ services, onToggleService, onReset, onLogout, country = "United States", faceId, onToggleFaceId, bioLabel = "Face ID", provider, appleConnected, googleConnected, email }: {
   services: string[]; onToggleService: (id: string) => void; onReset: () => void; onLogout?: () => void; country?: string;
-  faceId?: boolean; onToggleFaceId?: (v: boolean) => void; bioLabel?: string; provider?: "google" | "apple" | "email"; email?: string;
+  faceId?: boolean; onToggleFaceId?: (v: boolean) => void; bioLabel?: string; provider?: "google" | "apple" | "email";
+  appleConnected?: boolean; googleConnected?: boolean; email?: string;
 }) {
   const t = useTheme();
   const [expanded, setExpanded] = useState(false);
@@ -49,8 +50,8 @@ export function SettingsScreen({ services, onToggleService, onReset, onLogout, c
 
         <SectionLabel>Accounts</SectionLabel>
         {email ? <ListRow title="Signed in as" subtitle={email} value={provider === "google" ? "Google" : provider === "apple" ? "Apple" : "Email"} /> : null}
-        <ListRow title="Apple" value={provider === "apple" ? "Connected" : undefined} trailing={provider === "apple" ? null : <Text style={[t.type.caption, { color: t.color.inkTertiary }]}>Not connected</Text>} />
-        <ListRow title="Google" value={provider === "google" ? "Connected" : undefined} trailing={provider === "google" ? null : <Text style={[t.type.caption, { color: t.color.inkTertiary }]}>Not connected</Text>} last />
+        <ListRow title="Apple" value={appleConnected ? "Connected" : undefined} trailing={appleConnected ? null : <Text style={[t.type.caption, { color: t.color.inkTertiary }]}>Not connected</Text>} />
+        <ListRow title="Google" value={googleConnected ? "Connected" : undefined} trailing={googleConnected ? null : <Text style={[t.type.caption, { color: t.color.inkTertiary }]}>Not connected</Text>} last />
 
         <SectionLabel>Appearance</SectionLabel>
         <View style={{ paddingTop: 6, paddingBottom: 14 }}>
