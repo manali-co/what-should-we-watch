@@ -14,6 +14,9 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "runtimeVersion": {
+        "policy": "appVersion"
       }
     },
     "android": {
@@ -52,6 +55,9 @@
         "projectId": "8bfc4c94-aad8-4898-b027-a7a0e16259d4"
       }
     },
-    "owner": "ayush1220"
+    "owner": "ayush1220",
+    "updates": {
+      "url": "https://u.expo.dev/8bfc4c94-aad8-4898-b027-a7a0e16259d4"
+    }
   }
 }
