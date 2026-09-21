@@ -42,7 +42,7 @@ function holidayOf(d: Date): string | null {
   const m = d.getMonth(), day = d.getDate(), dow = d.getDay(), h = d.getHours();
   if (m === 9 && day === 31) return "Halloween";
   if (m === 9 && day >= 29 && (dow === 5 || dow === 6 || dow === 0)) return "Halloween";
-  if (m === 11 && day >= 24 && day <= 26) return "Christmas Eve";
+  if (m === 11 && day === 24) return "Christmas Eve";
   if (m === 11 && day === 31 && h >= 17) return "New Year’s Eve";
   if (m === 1 && day === 14 && h >= 17) return "Valentine’s";
   // Thanksgiving: 4th Thursday of November, from 15:00

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchDeck, recordDecision } from "../../api";
 import type { Film } from "../../films";
 import { serviceLabel } from "../../films";
-import { hueOf } from "../data";
+import { countryCode, hueOf } from "../data";
 import { currentGreeting } from "../greeting";
 import type { MoodHue } from "../tokens";
 import { MoodScreen } from "./MoodScreen";
@@ -18,10 +18,10 @@ const COMPANY: Record<string, string> = { me: "solo", two: "couple", group: "fri
 type Phase = "mood" | "thinking" | "deck" | "end" | "empty" | "error";
 
 export function TonightFlow({
-  services, onKeep, onDecided, onOpenSettings, onOpenShortlist, firstTime, userInitial, userName, onTutorialSeen,
+  services, onKeep, onDecided, onOpenSettings, onOpenShortlist, firstTime, userInitial, userName, onTutorialSeen, country,
 }: {
   services: string[]; onKeep: (films: Film[]) => void; onDecided?: () => void; onOpenSettings: () => void;
-  onOpenShortlist: () => void; firstTime?: boolean; userInitial?: string; userName?: string; onTutorialSeen?: () => void;
+  onOpenShortlist: () => void; firstTime?: boolean; userInitial?: string; userName?: string; onTutorialSeen?: () => void; country?: string;
 }) {
   const [phase, setPhase] = useState<Phase>("mood");
   const [moods, setMoods] = useState<string[]>([]);
@@ -43,7 +43,7 @@ export function TonightFlow({
     setPending(true);
     setPhase("thinking");
     try {
-      const deck = await fetchDeck({ services, moods: picked, company: COMPANY[who] ?? "solo" });
+      const deck = await fetchDeck({ services, moods: picked, company: COMPANY[who] ?? "solo", country: countryCode(country) });
       setFilms(deck);
     } catch {
       setFailed(true);

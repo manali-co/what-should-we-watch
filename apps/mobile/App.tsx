@@ -52,6 +52,8 @@ function Root() {
   const [ready, setReady] = useState(false);
   const [onboarded, setOnboarded] = useState(false);
   const [services, setServices] = useState<string[]>([]);
+  const [country, setCountry] = useState("United States");
+  const [displayName, setDisplayName] = useState("");
   const [tab, setTab] = useState<Tab>("tonight");
   const [shortlist, setShortlist] = useState<Film[]>([]);
   const [decisions, setDecisions] = useState(0);
@@ -66,7 +68,7 @@ function Root() {
   useEffect(() => {
     AsyncStorage.getItem(STORE).then((raw) => {
       if (raw) {
-        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); } catch {}
+        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); } catch {}
       }
       setReady(true);
     });
@@ -89,9 +91,12 @@ function Root() {
   };
   const declineBio = () => { setBioAsked(true); setBioOffer(false); persist({ bioAsked: true }); };
 
-  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean }) =>
-    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, ...next })).catch(() => {});
-  const finishOnboarding = (svcs: string[]) => { setServices(svcs); setOnboarded(true); persist({ services: svcs, onboarded: true }); };
+  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string }) =>
+    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, ...next })).catch(() => {});
+  const finishOnboarding = (svcs: string[], countryName: string, name: string) => {
+    setServices(svcs); setCountry(countryName); setDisplayName(name); setOnboarded(true);
+    persist({ services: svcs, country: countryName, displayName: name, onboarded: true });
+  };
   const toggleService = (s: string) => { const n = services.includes(s) ? services.filter((x) => x !== s) : [...services, s]; setServices(n); persist({ services: n }); };
   const addToShortlist = (films: Film[]) => {
     setShortlist((prev) => { const ids = new Set(prev.map((f) => f.id)); return [...prev, ...films.filter((f) => !ids.has(f.id))]; });
@@ -113,7 +118,7 @@ function Root() {
     <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
       <StatusBar barStyle="light-content" />
       {!onboarded ? (
-        <OnboardingScreen onDone={(svcs) => finishOnboarding(svcs)} />
+        <OnboardingScreen onDone={finishOnboarding} />
       ) : bioOffer ? (
         <EnableFaceIdCard onEnable={enrollBio} onSkip={declineBio} />
       ) : (
@@ -128,12 +133,13 @@ function Root() {
                 onOpenShortlist={() => setTab("shortlist")}
                 firstTime={decisions === 0}
                 userInitial={userInitial}
-                userName={user?.firstName ?? undefined}
+                userName={displayName || (user?.firstName ?? undefined)}
+                country={country}
               />
             )}
             {tab === "shortlist" && <ShortlistScreen films={shortlist} onRemove={(id) => setShortlist((p) => p.filter((f) => f.id !== id))} onWatch={(f) => f.link && Linking.openURL(f.link).catch(() => {})} />}
             {tab === "taste" && <TasteScreen decisions={decisions} />}
-            {tab === "settings" && <SettingsScreen services={services} onToggleService={toggleService} onReset={reset} onLogout={() => { void signOut(); setStarted(false); setTab("tonight"); }} provider={provider} email={email} />}
+            {tab === "settings" && <SettingsScreen services={services} onToggleService={toggleService} onReset={reset} onLogout={() => { void signOut(); setStarted(false); setTab("tonight"); }} provider={provider} email={email} country={country} />}
           </View>
           <View style={styles.nav}>
             {([["tonight", "Tonight"], ["shortlist", `Shortlist${shortlist.length ? ` ${shortlist.length}` : ""}`], ["taste", "Taste"], ["settings", "Settings"]] as [Tab, string][]).map(
