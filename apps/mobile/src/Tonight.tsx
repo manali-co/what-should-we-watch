@@ -45,7 +45,7 @@ export function Tonight({ onKeep }: { onKeep: (films: Film[]) => void }) {
 
   if (screen === "deck")
     return (
-      <View style={{ flex: 1, paddingTop: 8 }}>
+      <View style={{ flex: 1, paddingTop: 6 }}>
         <Text style={styles.deckHead}>Tonight's ten</Text>
         <Deck films={MOCK_DECK} onDone={(k) => { setKept(k); onKeep(k); setScreen("done"); }} />
       </View>
@@ -105,11 +105,11 @@ export function Tonight({ onKeep }: { onKeep: (films: Film[]) => void }) {
 }
 
 const styles = StyleSheet.create({
-  topbar: { position: "absolute", top: 54, left: 22, right: 22, zIndex: 5, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  topbar: { position: "absolute", top: 6, left: 22, right: 22, zIndex: 5, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: theme.surface2, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: theme.coral },
   avatarText: { color: theme.ink, fontFamily: font.bodySemi, fontSize: 14 },
   dots: { color: theme.muted, fontSize: 22, letterSpacing: 1 },
-  scroll: { paddingTop: 104, paddingHorizontal: 22, paddingBottom: 150 },
+  scroll: { paddingTop: 54, paddingHorizontal: 22, paddingBottom: 150 },
   h1: { color: theme.ink, fontFamily: font.display, fontSize: 46, lineHeight: 48, letterSpacing: -1.5 },
   headlineMoods: { marginTop: 14, lineHeight: 34 },
   moodWord: { fontFamily: font.display, fontSize: 26, letterSpacing: -0.5 },

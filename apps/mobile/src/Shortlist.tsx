@@ -33,7 +33,7 @@ export function Shortlist({ films, onRemove }: { films: Film[]; onRemove: (id: s
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingTop: 64, paddingHorizontal: 22, paddingBottom: 120 },
+  scroll: { paddingTop: 20, paddingHorizontal: 22, paddingBottom: 120 },
   kicker: { color: theme.muted, fontSize: 13, letterSpacing: 1, textTransform: "uppercase" },
   h1: { color: theme.ink, fontSize: 44, fontWeight: "800", letterSpacing: -1, marginTop: 8, marginBottom: 12 },
   empty: { color: theme.muted, fontSize: 16, marginTop: 20, lineHeight: 22 },
