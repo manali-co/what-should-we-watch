@@ -11,7 +11,7 @@ import { font, theme } from "./theme";
 
 const noNavigate = () => {}; // state-based app; finalize activates the session, the gate re-renders
 
-export function SignIn() {
+export function SignIn({ onCancel }: { onCancel?: () => void } = {}) {
   const { startSSOFlow } = useSSO();
   const { signIn, fetchStatus: siFetching } = useSignIn();
   const { signUp } = useSignUp();
@@ -135,6 +135,11 @@ export function SignIn() {
             <Pressable style={styles.emailBtn} onPress={() => setMode("email")} disabled={loading}>
               <Text style={styles.emailBtnText}>Continue with email</Text>
             </Pressable>
+            {onCancel && (
+              <Pressable onPress={onCancel} disabled={loading}>
+                <Text style={styles.back}>Not now — keep browsing as a guest</Text>
+              </Pressable>
+            )}
           </>
         )}
         {mode === "email" && (

@@ -14,7 +14,7 @@ const STEPS: [string, string][] = [
   ["Swipe to decide.", "Right to like, left to pass. Every swipe teaches us what you’d say yes to."],
 ];
 
-export function WelcomeScreen({ onGetStarted }: { onGetStarted: () => void }) {
+export function WelcomeScreen({ onGetStarted, onContinueAsGuest }: { onGetStarted: () => void; onContinueAsGuest?: () => void }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   return (
@@ -44,7 +44,8 @@ export function WelcomeScreen({ onGetStarted }: { onGetStarted: () => void }) {
 
       <View style={{ position: "absolute", left: t.space.pageInset, right: t.space.pageInset, bottom: insets.bottom + 12, gap: t.space[3] }}>
         <Button variant="primary" size="lg" full onPress={onGetStarted}>Get started</Button>
-        <Body tone="tertiary" style={[t.type.caption, { textAlign: "center" }]}>Free. No card. Your taste stays yours.</Body>
+        {onContinueAsGuest ? <Button variant="ghost" size="lg" full onPress={onContinueAsGuest}>Continue as guest</Button> : null}
+        <Body tone="tertiary" style={[t.type.caption, { textAlign: "center" }]}>Free. No card. Guests get the full loop on this phone; sign in later to decide with friends.</Body>
       </View>
     </Screen>
   );
