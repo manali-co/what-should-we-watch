@@ -85,3 +85,22 @@
 {"_e":"metro:client_log","_t":1789956977481,"level":"log","data":["Running application \"main\" with appParams:\n","{\"hydrate\": undefined, \"rootTag\": \"#root\"}","\nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."]}
 {"_e":"metro:bundling:started","_t":1789957058369,"id":"h","platform":"ios","environment":null,"entry":"apps/mobile/index.ts"}
 {"_e":"metro:bundling:done","_t":1789957058763,"id":"h","total":733,"ms":394.140041}
+{"_e":"metro:bundling:started","_t":1789958563424,"id":"j","platform":"ios","environment":null,"entry":"apps/mobile/index.ts"}
+{"_e":"metro:bundling:done","_t":1789958563733,"id":"j","total":1,"ms":308.773916}
+{"_e":"metro:server_log","_t":1789958777911,"level":"error","data":["[timeout] connection terminated with Device for app='%s' on device='%s' after not responding for %s seconds.","host.exp.Exponent","iPhone","60"]}
+{"_e":"root:init","_t":1789958818762,"format":"v0-jsonl","version":"57.0.26"}
+{"_e":"env:mode","_t":1789958818763,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1789958818768,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1789958819072,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../../../app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1789958819699,"serverRoot":"../../../../..","projectRoot":"../../..","exporting":false,"flags":{"autolinkingModuleResolution":true,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1789958819807,"plugins":[]}
+{"_e":"metro:instantiate","_t":1789958820165,"atlas":false,"workers":6,"host":"::","port":8082}
+{"_e":"metro:bundling:started","_t":1789958834381,"id":"1","platform":"web","environment":null,"entry":"apps/mobile/index.ts"}
+{"_e":"metro:bundling:done","_t":1789958834611,"id":"1","total":374,"ms":230.258875}
+{"_e":"metro:client_log","_t":1789958834690,"level":"info","data":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"]}
+{"_e":"metro:client_log","_t":1789958834691,"level":"log","data":["Running application \"main\" with appParams:\n","{\"hydrate\": undefined, \"rootTag\": \"#root\"}","\nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."]}
+{"_e":"metro:bundling:started","_t":1789959039491,"id":"7","platform":"web","environment":null,"entry":"apps/mobile/index.ts"}
+{"_e":"metro:bundling:done","_t":1789959039529,"id":"7","total":1,"ms":37.217167}
+{"_e":"metro:client_log","_t":1789959039595,"level":"info","data":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"]}
+{"_e":"metro:client_log","_t":1789959039597,"level":"log","data":["Running application \"main\" with appParams:\n","{\"hydrate\": undefined, \"rootTag\": \"#root\"}","\nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."]}
+{"_e":"metro:client_log","_t":1789959097737,"level":"warn","data":["props.pointerEvents is deprecated. Use style.pointerEvents"]}

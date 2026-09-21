@@ -1,9 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Animated, ImageBackground, PanResponder, Platform, Pressable, StyleSheet, Text, View,
-  useWindowDimensions,
+  Animated, Easing, ImageBackground, Linking, PanResponder, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions,
 } from "react-native";
 import { Film, serviceLabel } from "./films";
 import { font, theme } from "./theme";
@@ -16,12 +15,38 @@ const haptic = (fn: () => void) => {
   if (Platform.OS !== "web") fn();
 };
 
-export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) => void }) {
+type Decided = (film: Film, action: Decision, reaction?: "loved" | "okay" | "disliked") => void;
+
+export function Deck({ films, firstTime, onDecision, onDone }: {
+  films: Film[]; firstTime?: boolean; onDecision?: Decided; onDone: (kept: Film[]) => void;
+}) {
   const { width } = useWindowDimensions();
   const [index, setIndex] = useState(0);
   const [kept, setKept] = useState<Film[]>([]);
   const [reactFor, setReactFor] = useState<Film | null>(null);
   const pos = useRef(new Animated.ValueXY()).current;
+  const [showHint, setShowHint] = useState(!!firstTime);
+  const hint = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!showHint) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(hint, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(hint, { toValue: -1, duration: 1400, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(hint, { toValue: 0, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [showHint, hint]);
+
+  const dismissHint = () => showHint && setShowHint(false);
+
+  const openTrailer = (f: Film) => {
+    const q = encodeURIComponent(`${f.title} ${f.year ?? ""} official trailer`);
+    Linking.openURL(`https://www.youtube.com/results?search_query=${q}`).catch(() => {});
+  };
 
   const film = films[index];
   const next = films[index + 1];
@@ -55,12 +80,14 @@ export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) 
   const pan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 6 || Math.abs(g.dy) > 6,
+      onPanResponderGrant: () => dismissHint(),
       onPanResponderMove: (_, g) => pos.setValue({ x: g.dx, y: Math.min(40, g.dy) }),
       onPanResponderRelease: (_, g) => {
         if (g.dy < -SWIPE && Math.abs(g.dy) > Math.abs(g.dx)) fling("maybe", { x: 0, y: -900 });
         else if (g.dx > SWIPE) fling("like", { x: 900, y: 0 });
         else if (g.dx < -SWIPE) fling("dislike", { x: -900, y: 0 });
         else if (g.dy > SWIPE) setReactFor(film);
+        else if (Math.abs(g.dx) < 8 && Math.abs(g.dy) < 8) openTrailer(film);
         else Animated.spring(pos, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
       },
     }),
@@ -107,6 +134,14 @@ export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) 
         >
           <Card f={film} top />
         </Animated.View>
+        {showHint && (
+          <Animated.View pointerEvents="none" style={[styles.hintOverlay, {
+            transform: [{ translateX: hint.interpolate({ inputRange: [-1, 1], outputRange: [-70, 70] }) }],
+          }]}>
+            <View style={styles.hintPuck} />
+            <Text style={styles.hintText}>Swipe to choose · tap for trailer</Text>
+          </Animated.View>
+        )}
       </View>
 
       <View style={styles.actions}>
@@ -126,7 +161,7 @@ export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) 
         <View style={styles.sheet}>
           <Text style={styles.sheetTitle}>You've seen {reactFor.title}. How was it?</Text>
           <View style={styles.pillRow}>
-            {[["Loved it", theme.yes], ["It was okay", theme.muted], ["Not for me", theme.no]].map(([label, c]) => (
+            {([["Loved it", theme.yes, "loved"], ["It was okay", theme.muted, "okay"], ["Not for me", theme.no, "disliked"]] as const).map(([label, c, reaction]) => (
               <Pressable key={label as string} style={[styles.rpill, { borderColor: c as string }]}
                 onPress={() => { haptic(() => Haptics.selectionAsync()); setReactFor(null); advance(reactFor, "watched"); }}>
                 <Text style={{ color: c as string, fontFamily: font.bodySemi }}>{label}</Text>
@@ -160,6 +195,9 @@ const styles = StyleSheet.create({
   actYes: { backgroundColor: theme.ink, borderColor: theme.ink, flex: 1.3 },
   actText: { fontFamily: font.bodySemi, fontSize: 16 },
   hint: { color: theme.muted, fontFamily: font.body, fontSize: 12, textAlign: "center", marginTop: 10 },
+  hintOverlay: { position: "absolute", alignSelf: "center", top: "44%", alignItems: "center", gap: 12 },
+  hintPuck: { width: 54, height: 54, borderRadius: 27, borderWidth: 2, borderColor: "rgba(255,255,255,0.9)", backgroundColor: "rgba(255,255,255,0.18)" },
+  hintText: { color: "#fff", fontFamily: font.bodySemi, fontSize: 14, backgroundColor: "rgba(10,11,15,0.6)", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, overflow: "hidden" },
   sheet: { position: "absolute", left: 18, right: 18, bottom: 20, backgroundColor: theme.surface, borderRadius: 20, padding: 18, borderWidth: 1, borderColor: theme.line },
   sheetTitle: { color: theme.ink, fontFamily: font.bodySemi, fontSize: 16, marginBottom: 12 },
   pillRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
