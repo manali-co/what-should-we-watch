@@ -6,7 +6,8 @@
 // note/banner components; the skeletons are pulsing loaders. Foundation tokens + primitives only.
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Animated, Easing, ScrollView, Text, TextInput, View, ViewStyle } from "react-native";
-import { Blend, Body, Headline, Micro, Screen, TopRow } from "../primitives";
+import { Body, Headline, Micro, Screen, TopRow } from "../primitives";
+import { Mascot, MascotState } from "../Mascot";
 import { Button } from "../controls";
 import { ListRow } from "../surfaces";
 import { Poster } from "../poster";
@@ -19,11 +20,11 @@ const TINTS = ["#3E6B6F", "#8A5A3C", "#5B3F3A", "#4F6A5A", "#6C4B6E", "#5C5A6E",
 // ── Shared blocks (from Results.jsx: Empty / Offline) ───────────────────────────
 
 /** Empty — centered block: Blend, optional kicker, headline, body, optional primary action. */
-function Empty({ kicker, title, body, action, onAction }: { kicker?: string; title: string; body: string; action?: string; onAction?: () => void }) {
+function Empty({ kicker, title, body, action, onAction, mascot = "empty" }: { kicker?: string; title: string; body: string; action?: string; onAction?: () => void; mascot?: MascotState }) {
   const t = useTheme();
   return (
     <View style={{ flex: 1, justifyContent: "center", gap: t.space[4], paddingBottom: 80 }}>
-      <Blend hues={["coral", "lilac", "lagoon"]} size={28} />
+      <Mascot state={mascot} size={72} />
       {kicker ? <Micro>{kicker}</Micro> : null}
       <Headline size="l">{title}</Headline>
       <Body size="l">{body}</Body>
@@ -159,6 +160,7 @@ export function ApiDown({ onRetry, onOpenShortlist }: { onRetry: () => void; onO
     <Screen>
       <TopRow left={<Micro>Tonight</Micro>} />
       <Empty
+        mascot="error"
         kicker="Our side, not yours"
         title="We couldn’t build tonight’s ten."
         body="The catalog service didn’t answer. It usually comes back in a minute; your shortlist is still here."
@@ -179,6 +181,7 @@ export function Offline({ onRetry, onOpenShortlist }: { onRetry: () => void; onO
     <Screen>
       <TopRow left={<Micro>Tonight</Micro>} />
       <Empty
+        mascot="error"
         kicker="You’re offline"
         title="We can’t refresh tonight’s deck."
         body="We need a connection to check what’s on your services right now. Your shortlist works offline."
@@ -221,7 +224,7 @@ export function SessionExpired({ onSignIn, onOpenShortlist }: { onSignIn: () => 
   return (
     <Screen>
       <View style={{ flex: 1, justifyContent: "center", gap: t.space[4], paddingBottom: 80 }}>
-        <Blend hues={["coral", "lilac", "lagoon"]} size={28} />
+        <Mascot state="empty" size={72} />
         <Micro>Signed out</Micro>
         <Headline size="l">Your session expired.</Headline>
         <Body size="l">
