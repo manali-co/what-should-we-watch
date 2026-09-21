@@ -1,4 +1,3 @@
-import { API_BASE } from "./theme";
 
 export type Film = {
   id: string;
@@ -19,10 +18,3 @@ const SERVICE_LABEL: Record<string, string> = {
 };
 export const serviceLabel = (id: string) => SERVICE_LABEL[id] ?? id;
 
-export async function fetchDeck(services: string[]): Promise<Film[]> {
-  const svc = services.length ? `&services=${services.join(",")}` : "";
-  const r = await fetch(`${API_BASE}/v1/catalog/deck?country=us&limit=10${svc}`);
-  if (!r.ok) throw new Error(`deck ${r.status}`);
-  const data = await r.json();
-  return (data.films ?? []) as Film[];
-}

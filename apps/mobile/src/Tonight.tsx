@@ -1,14 +1,15 @@
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Deck } from "./Deck";
-import { fetchDeck, Film } from "./films";
+import { Film } from "./films";
+import { fetchDeck, recordDecision } from "./api";
 import { font, hue, MOODS, theme } from "./theme";
 
 type Screen = "mood" | "thinking" | "deck" | "done";
 const COMPANY = ["just me", "the two of us", "a group"];
 const LENGTH = ["any length", "about 2 hours", "under 100 min"];
 
-export function Tonight({ services, onKeep }: { services: string[]; onKeep: (films: Film[]) => void }) {
+export function Tonight({ services, firstTime, onKeep }: { services: string[]; firstTime: boolean; onKeep: (films: Film[]) => void }) {
   const [screen, setScreen] = useState<Screen>("mood");
   const [selected, setSelected] = useState<string[]>([]);
   const [company, setCompany] = useState(1);
@@ -24,7 +25,7 @@ export function Tonight({ services, onKeep }: { services: string[]; onKeep: (fil
     setScreen("thinking");
     setError(null);
     try {
-      const films = await fetchDeck(services);
+      const films = await fetchDeck({ services, moods: selected, company: COMPANY[company], length: LENGTH[length] });
       if (!films.length) throw new Error("no films");
       // a little delay so the "thinking" beat is felt
       setTimeout(() => { setDeck(films); setScreen("deck"); }, 900);
@@ -58,7 +59,14 @@ export function Tonight({ services, onKeep }: { services: string[]; onKeep: (fil
     return (
       <View style={{ flex: 1, paddingTop: 6 }}>
         <Text style={styles.deckHead}>Tonight's ten</Text>
-        <Deck films={deck} onDone={(k) => { setKept(k); onKeep(k); setScreen("done"); }} />
+        <Deck
+          films={deck}
+          firstTime={firstTime}
+          onDecision={(f, action, reaction) =>
+            recordDecision({ titleId: f.id, title: f.title, action, reaction, moods: selected })
+          }
+          onDone={(k) => { setKept(k); onKeep(k); setScreen("done"); }}
+        />
       </View>
     );
 

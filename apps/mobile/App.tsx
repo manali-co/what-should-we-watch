@@ -85,7 +85,7 @@ export default function App() {
         ) : (
           <>
             <View style={{ flex: 1 }}>
-              {tab === "tonight" && <Tonight services={services} onKeep={addToShortlist} />}
+              {tab === "tonight" && <Tonight services={services} firstTime={decisions === 0} onKeep={addToShortlist} />}
               {tab === "shortlist" && <Shortlist films={shortlist} onRemove={(id) => setShortlist((p) => p.filter((f) => f.id !== id))} />}
               {tab === "taste" && <Taste decisions={decisions} />}
               {tab === "settings" && <Settings services={services} onToggleService={toggleService} onReset={reset} />}
