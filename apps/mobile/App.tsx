@@ -56,60 +56,65 @@ function Root() {
   const [tab, setTab] = useState<Tab>("tonight");
   const [shortlist, setShortlist] = useState<Film[]>([]);
   const [decisions, setDecisions] = useState(0);
-  const [locked, setLocked] = useState(true);
-  const [bioLabel, setBioLabel] = useState("biometrics");
-  const [faceId, setFaceId] = useState(false); // app-lock is opt-in, like most apps
+  const [locked, setLocked] = useState(false); // stays home unless the user opted into an app-lock
+  const [bioLabel, setBioLabel] = useState("Face ID");
+  const [bioAvailable, setBioAvailable] = useState(false);
+  const [faceId, setFaceId] = useState(false); // app-lock is opt-in
+  const [askedBio, setAskedBio] = useState(false); // whether we've offered the lock yet
 
   useEffect(() => { setAuthTokenGetter(() => getToken()); return () => setAuthTokenGetter(null); }, [getToken]);
 
-  // Prompt the device's biometric (Face ID / Touch ID / fingerprint), falling back to passcode.
+  // Biometric only — never the device passcode. On failure we keep the lock and let the user retry.
   const runUnlock = useCallback(async () => {
     const r = await LocalAuthentication.authenticateAsync({
       promptMessage: "Unlock What Should We Watch",
-      fallbackLabel: "Use passcode",
+      disableDeviceFallback: true,
       cancelLabel: "Cancel",
-      disableDeviceFallback: false,
     }).catch(() => ({ success: false }));
-    setLocked(!r.success);
+    if (r.success) setLocked(false);
   }, []);
 
   useEffect(() => {
     AsyncStorage.getItem(STORE).then((raw) => {
       if (raw) {
-        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setFaceId(!!s.faceId); } catch {}
+        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setFaceId(!!s.faceId); setAskedBio(!!s.askedBio); } catch {}
       }
       setReady(true);
     });
   }, []);
 
-  // Biometric app-lock on cold start — only when the user has opted in.
+  // On cold start when signed in: learn what biometric exists; lock only if the user opted in.
   useEffect(() => {
-    if (!isSignedIn || Platform.OS === "web" || !faceId) { setLocked(false); return; }
+    if (!isSignedIn || Platform.OS === "web") { setLocked(false); return; }
     (async () => {
       const has = await LocalAuthentication.hasHardwareAsync().catch(() => false);
       const enrolled = has && (await LocalAuthentication.isEnrolledAsync().catch(() => false));
-      if (!enrolled) { setLocked(false); return; }
-      const types = await LocalAuthentication.supportedAuthenticationTypesAsync().catch(() => [] as number[]);
-      const T = LocalAuthentication.AuthenticationType;
-      setBioLabel(
-        types.includes(T.FACIAL_RECOGNITION) ? (Platform.OS === "ios" ? "Face ID" : "face unlock")
-          : types.includes(T.FINGERPRINT) ? (Platform.OS === "ios" ? "Touch ID" : "fingerprint")
-            : types.includes(T.IRIS) ? "iris" : "biometrics",
-      );
-      await runUnlock();
+      setBioAvailable(!!enrolled);
+      if (enrolled) {
+        const types = await LocalAuthentication.supportedAuthenticationTypesAsync().catch(() => [] as number[]);
+        const T = LocalAuthentication.AuthenticationType;
+        setBioLabel(
+          types.includes(T.FACIAL_RECOGNITION) ? (Platform.OS === "ios" ? "Face ID" : "face unlock")
+            : types.includes(T.FINGERPRINT) ? (Platform.OS === "ios" ? "Touch ID" : "fingerprint")
+              : types.includes(T.IRIS) ? "iris" : "biometrics",
+        );
+      }
+      if (faceId && enrolled) { setLocked(true); await runUnlock(); }
+      else setLocked(false);
     })();
   }, [isSignedIn, faceId, runUnlock]);
 
   const toggleFaceId = async (v: boolean) => {
     if (v && Platform.OS !== "web") {
-      const enrolled = await LocalAuthentication.isEnrolledAsync().catch(() => false);
-      if (!enrolled) { await LocalAuthentication.authenticateAsync({ promptMessage: "Confirm to enable app lock" }).catch(() => null); }
+      const r = await LocalAuthentication.authenticateAsync({ promptMessage: `Turn on ${bioLabel}`, disableDeviceFallback: true }).catch(() => ({ success: false }));
+      if (!r.success) return; // don't enable unless they pass the biometric once
     }
-    setFaceId(v); persist({ faceId: v });
+    setFaceId(v); setAskedBio(true); persist({ faceId: v, askedBio: true });
   };
+  const declineBio = () => { setAskedBio(true); persist({ askedBio: true }); };
 
-  const persist = (next: { services?: string[]; onboarded?: boolean; faceId?: boolean }) =>
-    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, faceId, ...next })).catch(() => {});
+  const persist = (next: { services?: string[]; onboarded?: boolean; faceId?: boolean; askedBio?: boolean }) =>
+    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, faceId, askedBio, ...next })).catch(() => {});
   const finishOnboarding = (svcs: string[]) => { setServices(svcs); setOnboarded(true); persist({ services: svcs, onboarded: true }); };
   const toggleService = (s: string) => { const n = services.includes(s) ? services.filter((x) => x !== s) : [...services, s]; setServices(n); persist({ services: n }); };
   const addToShortlist = (films: Film[]) => {
@@ -141,6 +146,8 @@ function Root() {
       <StatusBar barStyle="light-content" />
       {!onboarded ? (
         <OnboardingScreen onDone={(svcs) => finishOnboarding(svcs)} />
+      ) : !askedBio && bioAvailable ? (
+        <EnableFaceIdCard bioLabel={bioLabel} onEnable={() => toggleFaceId(true)} onSkip={declineBio} />
       ) : (
         <>
           <View style={{ flex: 1 }}>
@@ -172,6 +179,25 @@ function Root() {
         </>
       )}
     </SafeAreaView>
+  );
+}
+
+function EnableFaceIdCard({ bioLabel, onEnable, onSkip }: { bioLabel: string; onEnable: () => void; onSkip: () => void }) {
+  return (
+    <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 28, gap: 14 }}>
+      <Text style={{ color: darkColors.ink, fontFamily: fontFamily.display, fontSize: 30, letterSpacing: -0.8 }}>Lock the app with {bioLabel}?</Text>
+      <Text style={{ color: darkColors.inkSecondary, fontFamily: fontFamily.body, fontSize: 16, lineHeight: 23 }}>
+        You{"’"}re signed in, so this is optional — an extra layer that asks for {bioLabel} each time you open the app. You can change it anytime in Settings.
+      </Text>
+      <View style={{ gap: 10, marginTop: 8 }}>
+        <Pressable onPress={onEnable} style={{ backgroundColor: darkColors.accent, borderRadius: 999, paddingVertical: 16, alignItems: "center" }}>
+          <Text style={{ color: darkColors.onAccent, fontFamily: fontFamily.bodySemiBold, fontSize: 16 }}>Use {bioLabel}</Text>
+        </Pressable>
+        <Pressable onPress={onSkip} style={{ paddingVertical: 14, alignItems: "center" }}>
+          <Text style={{ color: darkColors.inkSecondary, fontFamily: fontFamily.bodyMedium, fontSize: 15 }}>Not now</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
