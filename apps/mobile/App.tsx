@@ -8,7 +8,7 @@ import { ClerkProvider, useAuth, useBiometricCredentials, useUser } from "@clerk
 import { tokenCache } from "@clerk/expo/token-cache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-import { Linking, Platform, Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Platform, Pressable, Share, StatusBar, StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { setAuthTokenGetter } from "./src/api";
 import { publishableKey } from "./src/clerk";
@@ -23,6 +23,8 @@ import { OnboardingScreen } from "./src/design/screens/OnboardingScreen";
 import { ShortlistScreen } from "./src/design/screens/ShortlistScreen";
 import { TasteScreen } from "./src/design/screens/TasteScreen";
 import { SettingsScreen } from "./src/design/screens/SettingsScreen";
+import { AccountScreen } from "./src/design/screens/AccountScreen";
+import { GateSheet, GateFeature } from "./src/design/screens/GateSheet";
 
 type Tab = "tonight" | "shortlist" | "taste" | "settings";
 const STORE = "wsww:v1";
@@ -59,6 +61,12 @@ function Root() {
   const [tab, setTab] = useState<Tab>("tonight");
   const [shortlist, setShortlist] = useState<Film[]>([]);
   const [decisions, setDecisions] = useState(0);
+  // Guest mode: the full core loop works signed-out on this phone. Account-only
+  // features (sync, group, account, export, delete) open a sign-in Gate instead.
+  const [guest, setGuest] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
+  const [gate, setGate] = useState<GateFeature | null>(null);
+  const [signInOverlay, setSignInOverlay] = useState(false);
   // Clerk's native biometric sign-in (Face ID / Touch ID). No custom app-lock: a valid
   // session flows straight to home; Face ID is an optional faster re-sign-in, enrolled once.
   const { getAvailability, enroll } = useBiometricCredentials();
@@ -70,7 +78,7 @@ function Root() {
   useEffect(() => {
     AsyncStorage.getItem(STORE).then((raw) => {
       if (raw) {
-        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); } catch {}
+        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); setGuest(!!s.guest); } catch {}
       }
       setReady(true);
     });
@@ -87,14 +95,21 @@ function Root() {
     })();
   }, [isSignedIn, bioAsked]);
 
+  // Once really signed in, leave guest mode and close any sign-in overlay/gate.
+  useEffect(() => {
+    if (!isSignedIn) return;
+    setSignInOverlay(false); setGate(null);
+    if (guest) { setGuest(false); persist({ guest: false }); }
+  }, [isSignedIn]);
+
   const enrollBio = async () => {
     try { await enroll({ reason: "Set up Face ID sign-in for next time" }); } catch { /* cancelled / unavailable */ }
     setBioAsked(true); setBioOffer(false); persist({ bioAsked: true });
   };
   const declineBio = () => { setBioAsked(true); setBioOffer(false); persist({ bioAsked: true }); };
 
-  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string }) =>
-    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, ...next })).catch(() => {});
+  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string; guest?: boolean }) =>
+    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, guest, ...next })).catch(() => {});
   const finishOnboarding = (svcs: string[], countryName: string, name: string) => {
     setServices(svcs); setCountry(countryName); setDisplayName(name); setOnboarded(true);
     persist({ services: svcs, country: countryName, displayName: name, onboarded: true });
@@ -103,19 +118,67 @@ function Root() {
   const addToShortlist = (films: Film[]) => {
     setShortlist((prev) => { const ids = new Set(prev.map((f) => f.id)); return [...prev, ...films.filter((f) => !ids.has(f.id))]; });
   };
-  const reset = () => { void signOut(); AsyncStorage.removeItem(STORE).catch(() => {}); setServices([]); setOnboarded(false); setShortlist([]); setDecisions(0); setTab("tonight"); };
+  // "Reset what we've learned" — clears local decisions/taste only; never signs out.
+  const resetLearned = () => { setShortlist([]); setDecisions(0); };
+  const continueAsGuest = () => { setGuest(true); persist({ guest: true }); };
+  const openSignIn = () => { setGate(null); setShowAccount(false); setSignInOverlay(true); };
+  const saveName = (name: string) => { setDisplayName(name); persist({ displayName: name }); void user?.update({ firstName: name })?.catch(() => {}); };
+  const doExport = async () => {
+    const payload = JSON.stringify(
+      { app: "What Should We Watch", exportedAt: new Date().toISOString(), country, services, decisions, shortlist: shortlist.map((f) => ({ id: f.id, title: f.title, service: f.service })) },
+      null, 2,
+    );
+    try { await Share.share({ message: payload, title: "Your What Should We Watch data" }); } catch { /* dismissed */ }
+  };
+  const deleteAccount = async () => {
+    try {
+      await user?.delete();
+    } catch {
+      // Server deletion failed — do NOT wipe or sign out, or it would look deleted while
+      // the account is still alive. Keep the account screen open and tell the user.
+      Alert.alert("Couldn’t delete your account", "Something went wrong on our side. Your account is unchanged — please try again in a moment.");
+      return;
+    }
+    void signOut(); AsyncStorage.removeItem(STORE).catch(() => {});
+    setShowAccount(false); setGuest(false); setStarted(false); setServices([]); setOnboarded(false); setShortlist([]); setDecisions(0); setTab("tonight");
+  };
+  const logout = () => { void signOut(); setShowAccount(false); setStarted(false); setTab("tonight"); };
 
   if (!isLoaded || !ready)
     return <SafeAreaView style={[styles.root, styles.center]}><Text style={styles.loadingText}>…</Text></SafeAreaView>;
-  if (!isSignedIn) {
-    if (started) return <SignIn />;
+  const inApp = isSignedIn || guest;
+  if (!inApp) {
+    if (started) return <SignIn onCancel={() => setStarted(false)} />;
     return (
       <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
         <StatusBar barStyle="light-content" />
-        <WelcomeScreen onGetStarted={() => setStarted(true)} />
+        <WelcomeScreen onGetStarted={() => setStarted(true)} onContinueAsGuest={continueAsGuest} />
       </SafeAreaView>
     );
   }
+  // A guest who chose to sign in: full-screen SignIn until a session exists.
+  if (signInOverlay && !isSignedIn) return <SignIn onCancel={() => setSignInOverlay(false)} />;
+  // Account management (members only) takes over the screen.
+  if (showAccount && isSignedIn)
+    return (
+      <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
+        <StatusBar barStyle="light-content" />
+        <AccountScreen
+          name={displayName || user?.firstName || ""}
+          email={email}
+          provider={provider}
+          appleConnected={appleConnected}
+          googleConnected={googleConnected}
+          memberSince={user?.createdAt ? user.createdAt.toLocaleDateString(undefined, { month: "long", year: "numeric" }) : undefined}
+          decisionCount={decisions}
+          onBack={() => setShowAccount(false)}
+          onSaveName={saveName}
+          onLogout={logout}
+          onDelete={deleteAccount}
+          onExport={doExport}
+        />
+      </SafeAreaView>
+    );
   return (
     <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
       <StatusBar barStyle="light-content" />
@@ -141,7 +204,23 @@ function Root() {
             )}
             {tab === "shortlist" && <ShortlistScreen films={shortlist} onRemove={(id) => setShortlist((p) => p.filter((f) => f.id !== id))} onWatch={(f) => f.link && Linking.openURL(f.link).catch(() => {})} />}
             {tab === "taste" && <TasteScreen decisions={decisions} />}
-            {tab === "settings" && <SettingsScreen services={services} onToggleService={toggleService} onReset={reset} onLogout={() => { void signOut(); setStarted(false); setTab("tonight"); }} provider={provider} appleConnected={appleConnected} googleConnected={googleConnected} email={email} country={country} />}
+            {tab === "settings" && (
+              <SettingsScreen
+                isGuest={guest && !isSignedIn}
+                services={services}
+                onToggleService={toggleService}
+                onReset={resetLearned}
+                onOpenAccount={() => setShowAccount(true)}
+                onSignIn={openSignIn}
+                onGate={setGate}
+                onExport={doExport}
+                onLogout={logout}
+                provider={provider}
+                email={email}
+                displayName={displayName || user?.firstName || undefined}
+                country={country}
+              />
+            )}
           </View>
           <View style={styles.nav}>
             {([["tonight", "Tonight"], ["shortlist", `Shortlist${shortlist.length ? ` ${shortlist.length}` : ""}`], ["taste", "Taste"], ["settings", "Settings"]] as [Tab, string][]).map(
@@ -152,6 +231,7 @@ function Root() {
               ),
             )}
           </View>
+          <GateSheet feature={gate} onSignIn={openSignIn} onReset={resetLearned} onClose={() => setGate(null)} />
         </>
       )}
     </SafeAreaView>
