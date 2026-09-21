@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Deck } from "./Deck";
-import { Film, MOCK_DECK } from "./films";
+import { fetchDeck, Film } from "./films";
 import { font, hue, MOODS, theme } from "./theme";
 
 type Screen = "mood" | "thinking" | "deck" | "done";
@@ -14,13 +14,24 @@ export function Tonight({ onKeep }: { onKeep: (films: Film[]) => void }) {
   const [company, setCompany] = useState(1);
   const [length, setLength] = useState(1);
   const [kept, setKept] = useState<Film[]>([]);
+  const [deck, setDeck] = useState<Film[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const toggle = (m: string) =>
     setSelected((p) => (p.includes(m) ? p.filter((x) => x !== m) : [...p, m]));
 
-  const start = () => {
+  const start = async () => {
     setScreen("thinking");
-    setTimeout(() => setScreen("deck"), 1600);
+    setError(null);
+    try {
+      const films = await fetchDeck([]); // TODO: pass the user's services from settings
+      if (!films.length) throw new Error("no films");
+      // a little delay so the "thinking" beat is felt
+      setTimeout(() => { setDeck(films); setScreen("deck"); }, 900);
+    } catch (e) {
+      setError("Couldn't reach the film service. Check your connection and try again.");
+      setScreen("mood");
+    }
   };
 
   const headline = useMemo(() => {
@@ -47,7 +58,7 @@ export function Tonight({ onKeep }: { onKeep: (films: Film[]) => void }) {
     return (
       <View style={{ flex: 1, paddingTop: 6 }}>
         <Text style={styles.deckHead}>Tonight's ten</Text>
-        <Deck films={MOCK_DECK} onDone={(k) => { setKept(k); onKeep(k); setScreen("done"); }} />
+        <Deck films={deck} onDone={(k) => { setKept(k); onKeep(k); setScreen("done"); }} />
       </View>
     );
 
@@ -99,6 +110,7 @@ export function Tonight({ onKeep }: { onKeep: (films: Film[]) => void }) {
         <Pressable style={[styles.cta, { opacity: selected.length ? 1 : 0.4 }]} disabled={!selected.length} onPress={start}>
           <Text style={styles.ctaText}>{selected.length ? "Deal ten" : "Pick a mood to start"}</Text>
         </Pressable>
+        {error && <Text style={styles.err}>{error}</Text>}
       </View>
     </>
   );
@@ -122,6 +134,7 @@ const styles = StyleSheet.create({
   footer: { position: "absolute", left: 0, right: 0, bottom: 0, padding: 22, paddingBottom: 24, backgroundColor: theme.bg, borderTopWidth: 1, borderTopColor: theme.line },
   cta: { backgroundColor: theme.ink, borderRadius: 999, paddingVertical: 17, alignItems: "center" },
   ctaText: { color: theme.bg, fontFamily: font.bodySemi, fontSize: 17 },
+  err: { color: theme.no, fontFamily: font.body, fontSize: 13, textAlign: "center", marginTop: 10 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30, gap: 14 },
   thinkBig: { color: theme.ink, fontFamily: font.displaySemi, fontSize: 22, textAlign: "center", marginTop: 6 },
   thinkSub: { color: theme.muted, fontFamily: font.body, fontSize: 15, textAlign: "center" },
