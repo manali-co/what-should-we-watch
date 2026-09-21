@@ -225,7 +225,7 @@ function Root() {
           <View style={styles.nav}>
             {([["tonight", "Tonight"], ["shortlist", `Shortlist${shortlist.length ? ` ${shortlist.length}` : ""}`], ["taste", "Taste"], ["settings", "Settings"]] as [Tab, string][]).map(
               ([key, label]) => (
-                <Pressable key={key} style={[styles.navItem, tab === key && styles.navItemOn]} onPress={() => setTab(key)}>
+                <Pressable key={key} testID={`tab-${key}`} style={[styles.navItem, tab === key && styles.navItemOn]} onPress={() => setTab(key)}>
                   <Text style={[styles.navText, tab === key && styles.navTextOn]}>{label}</Text>
                 </Pressable>
               ),
