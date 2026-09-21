@@ -8,7 +8,7 @@ type Screen = "mood" | "thinking" | "deck" | "done";
 const COMPANY = ["just me", "the two of us", "a group"];
 const LENGTH = ["any length", "about 2 hours", "under 100 min"];
 
-export function Tonight({ onKeep }: { onKeep: (films: Film[]) => void }) {
+export function Tonight({ services, onKeep }: { services: string[]; onKeep: (films: Film[]) => void }) {
   const [screen, setScreen] = useState<Screen>("mood");
   const [selected, setSelected] = useState<string[]>([]);
   const [company, setCompany] = useState(1);
@@ -24,7 +24,7 @@ export function Tonight({ onKeep }: { onKeep: (films: Film[]) => void }) {
     setScreen("thinking");
     setError(null);
     try {
-      const films = await fetchDeck([]); // TODO: pass the user's services from settings
+      const films = await fetchDeck(services);
       if (!films.length) throw new Error("no films");
       // a little delay so the "thinking" beat is felt
       setTimeout(() => { setDeck(films); setScreen("deck"); }, 900);
