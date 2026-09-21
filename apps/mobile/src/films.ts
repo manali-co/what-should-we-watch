@@ -18,3 +18,10 @@ const SERVICE_LABEL: Record<string, string> = {
 };
 export const serviceLabel = (id: string) => SERVICE_LABEL[id] ?? id;
 
+// "1 h 43 m" / "34 m" / "2 h" — never a leading "0 h".
+export const formatRuntime = (m?: number | null): string => {
+  if (!m) return "";
+  const h = Math.floor(m / 60), min = m % 60;
+  return h ? (min ? `${h} h ${min} m` : `${h} h`) : `${min} m`;
+};
+

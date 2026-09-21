@@ -25,7 +25,13 @@
       "expo-font",
       "expo-secure-store",
       "expo-web-browser",
-      "@clerk/expo"
+      "@clerk/expo",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Use Face ID to unlock What Should We Watch."
+        }
+      ]
     ],
     "scheme": "wsww"
   }

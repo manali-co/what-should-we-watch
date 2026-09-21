@@ -32,9 +32,8 @@ export function Deck({ films, firstTime, onDecision, onDone }: {
     if (!showHint) return;
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(hint, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-        Animated.timing(hint, { toValue: -1, duration: 1400, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-        Animated.timing(hint, { toValue: 0, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(hint, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(hint, { toValue: 0.35, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
       ]),
     );
     loop.start();
@@ -79,6 +78,8 @@ export function Deck({ films, firstTime, onDecision, onDone }: {
 
   const pan = useRef(
     PanResponder.create({
+      // Tap (no movement) must still grab the responder so release-based tap-to-trailer fires.
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 6 || Math.abs(g.dy) > 6,
       onPanResponderGrant: () => dismissHint(),
       onPanResponderMove: (_, g) => pos.setValue({ x: g.dx, y: Math.min(40, g.dy) }),
@@ -135,11 +136,18 @@ export function Deck({ films, firstTime, onDecision, onDone }: {
           <Card f={film} top />
         </Animated.View>
         {showHint && (
-          <Animated.View pointerEvents="none" style={[styles.hintOverlay, {
-            transform: [{ translateX: hint.interpolate({ inputRange: [-1, 1], outputRange: [-70, 70] }) }],
-          }]}>
-            <View style={styles.hintPuck} />
-            <Text style={styles.hintText}>Swipe to choose · tap for trailer</Text>
+          <Animated.View pointerEvents="none" style={[styles.guide, { opacity: hint }]}>
+            <View style={[styles.guideTag, styles.guideTop]}>
+              <Text style={styles.guideText}>↑  Maybe</Text>
+            </View>
+            <View style={styles.guideMid}>
+              <View style={[styles.guideTag, styles.guideSide]}><Text style={[styles.guideText, { color: theme.no }]}>←  Pass</Text></View>
+              <View style={styles.guideCenter}><Text style={styles.guideCenterText}>Tap for trailer</Text></View>
+              <View style={[styles.guideTag, styles.guideSide]}><Text style={[styles.guideText, { color: theme.yes }]}>Like  →</Text></View>
+            </View>
+            <View style={[styles.guideTag, styles.guideBottom]}>
+              <Text style={styles.guideText}>↓  Already seen it</Text>
+            </View>
           </Animated.View>
         )}
       </View>
@@ -195,9 +203,13 @@ const styles = StyleSheet.create({
   actYes: { backgroundColor: theme.ink, borderColor: theme.ink, flex: 1.3 },
   actText: { fontFamily: font.bodySemi, fontSize: 16 },
   hint: { color: theme.muted, fontFamily: font.body, fontSize: 12, textAlign: "center", marginTop: 10 },
-  hintOverlay: { position: "absolute", alignSelf: "center", top: "44%", alignItems: "center", gap: 12 },
-  hintPuck: { width: 54, height: 54, borderRadius: 27, borderWidth: 2, borderColor: "rgba(255,255,255,0.9)", backgroundColor: "rgba(255,255,255,0.18)" },
-  hintText: { color: "#fff", fontFamily: font.bodySemi, fontSize: 14, backgroundColor: "rgba(10,11,15,0.6)", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, overflow: "hidden" },
+  guide: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, justifyContent: "space-between", alignItems: "center", paddingVertical: 24 },
+  guideMid: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%", paddingHorizontal: 6 },
+  guideTop: {}, guideBottom: {}, guideSide: {},
+  guideTag: { backgroundColor: "rgba(10,11,15,0.66)", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
+  guideText: { color: "#fff", fontFamily: font.bodySemi, fontSize: 15 },
+  guideCenter: { backgroundColor: "rgba(10,11,15,0.5)", borderWidth: 1, borderColor: "rgba(255,255,255,0.35)", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
+  guideCenterText: { color: "#fff", fontFamily: font.bodyMed, fontSize: 13 },
   sheet: { position: "absolute", left: 18, right: 18, bottom: 20, backgroundColor: theme.surface, borderRadius: 20, padding: 18, borderWidth: 1, borderColor: theme.line },
   sheetTitle: { color: theme.ink, fontFamily: font.bodySemi, fontSize: 16, marginBottom: 12 },
   pillRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
