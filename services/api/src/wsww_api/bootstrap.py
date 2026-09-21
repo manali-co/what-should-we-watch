@@ -16,12 +16,14 @@ def build_deps() -> Deps:
     settings = get_settings()
     signer = _build_signer(settings)
     recs = _build_recs(settings)
+    clerk_jwks = _build_clerk(settings)
     return Deps(
         users=UsersRepo(get_container("users")),
         catalog=CatalogRepo(get_container("catalog")),
         decisions=DecisionsRepo(get_container("decisions")),
         taste=TasteRepo(get_container("taste")),
         recs=recs,
+        clerk_jwks=clerk_jwks,
         tokens_repo=TokensRepo(get_container("refreshTokens")),
         signer=signer,
         settings=settings,
@@ -60,3 +62,10 @@ def _build_recs(settings: Settings) -> object | None:
         AzureEmbedder(client, settings.embedding_deployment),
         AzureRanker(client, settings.ranking_deployment),
     )
+
+
+def _build_clerk(settings: Settings) -> object | None:
+    if not settings.clerk_issuer:
+        return None
+    from .auth.clerk import ClerkJwks
+    return ClerkJwks(settings.clerk_issuer)

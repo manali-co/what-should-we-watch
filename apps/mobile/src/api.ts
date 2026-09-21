@@ -4,6 +4,20 @@ import { Film } from "./films";
 
 const DEVICE_KEY = "wsww:device";
 
+let authTokenGetter: (() => Promise<string | null>) | null = null;
+export function setAuthTokenGetter(fn: (() => Promise<string | null>) | null) {
+  authTokenGetter = fn;
+}
+async function authHeaders(): Promise<Record<string, string>> {
+  const id = await deviceId();
+  const h: Record<string, string> = { "X-Device-Id": id };
+  try {
+    const t = authTokenGetter ? await authTokenGetter() : null;
+    if (t) h["Authorization"] = `Bearer ${t}`;
+  } catch { /* fall back to device id */ }
+  return h;
+}
+
 let cachedDevice: string | null = null;
 async function deviceId(): Promise<string> {
   if (cachedDevice) return cachedDevice;
@@ -41,7 +55,6 @@ export function moment(): Moment {
 export async function fetchDeck(opts: {
   services: string[]; moods: string[]; company?: string; length?: string;
 }): Promise<Film[]> {
-  const id = await deviceId();
   const mo = moment();
   const p = new URLSearchParams({
     country: "us",
@@ -53,7 +66,7 @@ export async function fetchDeck(opts: {
     season: mo.season, holiday: mo.holiday, limit: "10",
   });
   const r = await fetch(`${API_BASE}/v1/catalog/deck?${p.toString()}`, {
-    headers: { "X-Device-Id": id },
+    headers: await authHeaders(),
   });
   if (!r.ok) throw new Error(`deck ${r.status}`);
   const data = await r.json();
@@ -64,10 +77,8 @@ export async function recordDecision(d: {
   titleId: string; title: string; action: "like" | "dislike" | "maybe" | "watched";
   reaction?: "loved" | "okay" | "disliked"; moods: string[];
 }): Promise<void> {
-  const id = await deviceId();
+  const headers = { "Content-Type": "application/json", ...(await authHeaders()) };
   fetch(`${API_BASE}/v1/catalog/decisions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Device-Id": id },
-    body: JSON.stringify(d),
+    method: "POST", headers, body: JSON.stringify(d),
   }).catch(() => {}); // fire-and-forget; a lost decision is not worth blocking the swipe
 }

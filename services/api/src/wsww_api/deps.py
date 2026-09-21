@@ -18,6 +18,7 @@ class Deps:
     decisions: DecisionsRepo
     taste: TasteRepo
     recs: Any | None
+    clerk_jwks: Any | None
     tokens_repo: TokensRepo
     signer: TokenSigner
     settings: Settings
