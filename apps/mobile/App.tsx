@@ -4,14 +4,15 @@ import {
 import {
   Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold, useFonts,
 } from "@expo-google-fonts/figtree";
-import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
+import { ClerkProvider, useAuth } from "@clerk/expo";
+import { tokenCache } from "@clerk/expo/token-cache";
 import * as LocalAuthentication from "expo-local-authentication";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-import { Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { setAuthTokenGetter } from "./src/api";
-import { publishableKey, tokenCache } from "./src/clerk";
+import { publishableKey } from "./src/clerk";
 import { Film } from "./src/films";
 import { Onboarding } from "./src/Onboarding";
 import { Settings } from "./src/Settings";
@@ -61,7 +62,7 @@ function Root() {
 
   // Face ID lock on cold start when signed in
   useEffect(() => {
-    if (!isSignedIn) { setLocked(false); return; }
+    if (!isSignedIn || Platform.OS === "web") { setLocked(false); return; }
     (async () => {
       const has = await LocalAuthentication.hasHardwareAsync().catch(() => false);
       const enrolled = has && (await LocalAuthentication.isEnrolledAsync().catch(() => false));
