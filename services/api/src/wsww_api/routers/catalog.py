@@ -55,7 +55,10 @@ async def deck(
         recent = deps.decisions.recent(device, 80) if device else []
         req = DeckRequest(
             country=country.lower(), services=svc, moods=mood_list, limit=limit,
-            moment=Moment(daypart=daypart, weekday=weekday, is_weekend=is_weekend, season=season, holiday=holiday),
+            moment=Moment(
+                daypart=daypart, weekday=weekday, is_weekend=is_weekend,
+                season=season, holiday=holiday,
+            ),
             company=company, length=length, taste_notes=taste_notes, recent_decisions=recent,
         )
         try:

@@ -35,4 +35,6 @@ def build_openai_client(endpoint: str) -> Any:
     provider = get_bearer_token_provider(
         DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
     )
-    return AzureOpenAI(azure_endpoint=endpoint, azure_ad_token_provider=provider, api_version="2024-10-21")
+    return AzureOpenAI(
+        azure_endpoint=endpoint, azure_ad_token_provider=provider, api_version="2024-10-21"
+    )
