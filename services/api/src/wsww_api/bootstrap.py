@@ -15,9 +15,11 @@ def build_deps() -> Deps:
 
     settings = get_settings()
     signer = _build_signer(settings)
+    recs = _build_recs(settings)
     return Deps(
         users=UsersRepo(get_container("users")),
         catalog=CatalogRepo(get_container("catalog")),
+        recs=recs,
         tokens_repo=TokensRepo(get_container("refreshTokens")),
         signer=signer,
         settings=settings,
@@ -41,3 +43,18 @@ def _build_signer(settings: Settings) -> TokenSigner:
 
         key = LocalEcKey()
     return TokenSigner(key, access_ttl_seconds=settings.access_ttl_seconds)
+
+
+def _build_recs(settings: Settings) -> object | None:
+    if not settings.openai_endpoint:
+        return None
+    from .db import get_raw_container
+    from .recs_adapter import AzureEmbedder, AzureRanker, build_openai_client
+    from .recs_engine import RecsEngine
+
+    client = build_openai_client(settings.openai_endpoint)
+    return RecsEngine(
+        get_raw_container("catalog"),
+        AzureEmbedder(client, settings.embedding_deployment),
+        AzureRanker(client, settings.ranking_deployment),
+    )

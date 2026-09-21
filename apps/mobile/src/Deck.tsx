@@ -1,7 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 import { useRef, useState } from "react";
 import {
-  Animated, ImageBackground, PanResponder, Pressable, StyleSheet, Text, View,
+  Animated, ImageBackground, PanResponder, Platform, Pressable, StyleSheet, Text, View,
   useWindowDimensions,
 } from "react-native";
 import { Film, serviceLabel } from "./films";
@@ -9,6 +10,11 @@ import { font, theme } from "./theme";
 
 type Decision = "dislike" | "like" | "maybe" | "watched";
 const SWIPE = 110;
+
+// Haptics throw on web, so only fire them on native platforms.
+const haptic = (fn: () => void) => {
+  if (Platform.OS !== "web") fn();
+};
 
 export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) => void }) {
   const { width } = useWindowDimensions();
@@ -27,7 +33,12 @@ export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) 
   };
 
   const advance = (f: Film, decision: Decision) => {
-    if (decision === "like" || decision === "maybe") setKept((k) => [...k, f]);
+    if (decision === "like" || decision === "maybe") {
+      setKept((k) => [...k, f]);
+      haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
+    } else if (decision === "dislike") {
+      haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
+    }
     pos.setValue({ x: 0, y: 0 });
     const nextIndex = index + 1;
     setIndex(nextIndex);
@@ -117,7 +128,7 @@ export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) 
           <View style={styles.pillRow}>
             {[["Loved it", theme.yes], ["It was okay", theme.muted], ["Not for me", theme.no]].map(([label, c]) => (
               <Pressable key={label as string} style={[styles.rpill, { borderColor: c as string }]}
-                onPress={() => { setReactFor(null); advance(reactFor, "watched"); }}>
+                onPress={() => { haptic(() => Haptics.selectionAsync()); setReactFor(null); advance(reactFor, "watched"); }}>
                 <Text style={{ color: c as string, fontFamily: font.bodySemi }}>{label}</Text>
               </Pressable>
             ))}

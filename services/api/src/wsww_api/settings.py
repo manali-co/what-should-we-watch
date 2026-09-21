@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     access_ttl_seconds: int = 900
     refresh_ttl_days: int = 30
     env: str = "dev"
+    openai_endpoint: str = ""
+    embedding_deployment: str = "text-embedding-3-large"
+    ranking_deployment: str = "gpt-5.4-mini"
 
 
 @lru_cache

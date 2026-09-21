@@ -1,14 +1,8 @@
 [project]
-name = "wsww-catalog"
+name = "wsww-recs"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = [
-  "httpx>=0.27",
-  "azure-cosmos>=4.7",
-  "azure-identity>=1.17",
-  "pydantic>=2.8",
-  "openai>=1.40",
-]
+dependencies = ["openai>=1.40", "pydantic>=2.8"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11"]
@@ -18,7 +12,15 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/wsww_catalog"]
+packages = ["src/wsww_recs"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+extend-exclude = []
+
+[tool.ruff.lint.per-file-ignores]
+"src/wsww_recs/engine.py" = ["E501"]
+"tests/test_engine.py" = ["E501"]
