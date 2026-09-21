@@ -1,0 +1,32 @@
+# CodeRabbit configuration — https://docs.coderabbit.ai
+# Enable by installing the CodeRabbit GitHub App on the manali-co org and this repo.
+language: en-US
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - dev
+      - main
+  path_filters:
+    - "!**/package-lock.json"
+    - "!apps/mobile/.expo/**"
+    - "!apps/mobile/design-ref/**"
+  path_instructions:
+    - path: "apps/mobile/src/design/**"
+      instructions: >-
+        React Native (Expo) code ported 1:1 from the Claude Design project.
+        Flag stale closures in gesture/animation handlers, missing keys on list
+        or swipe cards, unguarded Linking/fetch, and any hardcoded colors or
+        fonts that should come from useTheme() tokens.
+    - path: "services/api/**"
+      instructions: >-
+        FastAPI on Azure Functions. Flag missing auth checks, unvalidated input,
+        and any secret handling that is not via Key Vault / managed identity.
+chat:
+  auto_reply: true

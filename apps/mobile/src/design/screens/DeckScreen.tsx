@@ -23,19 +23,35 @@ const toCard = (f: Film, i: number): CardFilm => ({
   leavingInDays: f.leavingInDays ?? null, why: f.why, posterUrl: f.posterUrl, tint: TINTS[i % TINTS.length],
 });
 
-export function DeckScreen({ films, moods, onDecision, onDone, onBack }: {
+export function DeckScreen({ films, moods, onDecision, onDone, onBack, firstTime, onSeenTutorial }: {
   films: Film[]; moods: string[];
   onDecision: (film: Film, action: Action, reaction?: Reaction) => void;
   onDone: (kept: Film[]) => void; onBack: () => void;
+  firstTime?: boolean; onSeenTutorial?: () => void;
 }) {
   const t = useTheme();
   const [index, setIndex] = useState(0);
+  const [coach, setCoach] = useState(!!firstTime);
+  const dismissCoach = () => { setCoach((c) => { if (c) onSeenTutorial?.(); return false; }); };
   const kept = useRef<Film[]>([]);
   const history = useRef<number[]>([]);
   const [canUndo, setCanUndo] = useState(false);
   const [toast, setToast] = useState<{ msg: string; noUndo?: boolean } | null>(null);
   const [sheetFilm, setSheetFilm] = useState<Film | null>(null);
   const pos = useRef(new Animated.ValueXY()).current;
+  const pulse = useRef(new Animated.Value(0.55)).current;
+
+  useEffect(() => {
+    if (!coach) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.55, duration: 700, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [coach, pulse]);
 
   const film = films[index];
   const next = films[index + 1];
@@ -80,10 +96,17 @@ export function DeckScreen({ films, moods, onDecision, onDone, onBack }: {
     Linking.openURL(`https://www.youtube.com/results?search_query=${q}`).catch(() => {});
   };
 
+  // Fly the card away (down) for the quick "watched" pills, then advance.
+  const flingWatched = (reaction: Reaction) => {
+    dismissCoach();
+    onDecision(film, "watched", reaction);
+    Animated.timing(pos, { toValue: { x: 0, y: H * 1.6 }, duration: 280, useNativeDriver: false }).start(() => advanceWatchedQuiet());
+  };
+
   // The PanResponder is created once; route through a ref so gestures always use the
   // CURRENT card's handlers instead of the first render's (stale-closure bug otherwise).
-  const gest = useRef({ fling, openTrailer });
-  gest.current = { fling, openTrailer };
+  const gest = useRef({ fling, openTrailer, dismissCoach });
+  gest.current = { fling, openTrailer, dismissCoach };
 
   const undo = () => {
     if (!history.current.length) return;
@@ -106,6 +129,7 @@ export function DeckScreen({ films, moods, onDecision, onDone, onBack }: {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 6 || Math.abs(g.dy) > 6,
+      onPanResponderGrant: () => gest.current.dismissCoach(),
       onPanResponderMove: (_, g) => pos.setValue({ x: g.dx, y: g.dy }),
       onPanResponderRelease: (_, g) => {
         if (shouldCommit(g.dx, g.dy, g.vx, g.vy)) gest.current.fling(swipeDirection(g.dx, g.dy));
@@ -140,11 +164,12 @@ export function DeckScreen({ films, moods, onDecision, onDone, onBack }: {
 
       <View style={{ marginTop: t.space[5], height: t.size.cardHeight }}>
         {next ? (
-          <Animated.View style={{ position: "absolute", left: 0, right: 0, top: 0, height: t.size.cardHeight, transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }, { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) }] }}>
+          <Animated.View key={next.id} style={{ position: "absolute", left: 0, right: 0, top: 0, height: t.size.cardHeight, transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }, { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) }] }}>
             <PosterCard film={toCard(next, index + 1)} compact />
           </Animated.View>
         ) : null}
         <Animated.View
+          key={film.id}
           {...pan.panHandlers}
           style={{ position: "absolute", left: 0, right: 0, top: 0, height: t.size.cardHeight, transform: [{ translateX: pos.x }, { translateY: pos.y }, { rotate }] }}
         >
@@ -155,12 +180,33 @@ export function DeckScreen({ films, moods, onDecision, onDone, onBack }: {
             </Animated.View>
           ))}
         </Animated.View>
+
+        {/* First-time coach-marks, drawn directly on the real card (Tinder-style). */}
+        {coach ? (
+          <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+            <Cue style={{ top: 18, left: 0, right: 0, alignItems: "center" }} arrow="↑" label="Maybe" color={t.color.maybe} pulse={pulse} />
+            <Cue style={{ top: "40%", left: 10 }} arrow="←" label="Pass" color={t.color.no} pulse={pulse} />
+            <Cue style={{ top: "40%", right: 10 }} arrow="→" trailing label="Like" color={t.color.yes} pulse={pulse} />
+            <Cue style={{ top: "54%", left: 0, right: 0, alignItems: "center" }} arrow="↓" label="Seen it" color="#F2F1EE" pulse={pulse} />
+            <Animated.View pointerEvents="none" style={{ position: "absolute", top: "29%", left: 0, right: 0, alignItems: "center", opacity: pulse }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(10,11,15,0.72)", paddingHorizontal: 14, height: 36, borderRadius: 999 }}>
+                <Text style={{ color: "#fff", fontSize: 13 }}>{"▶"}</Text>
+                <Text style={[t.type.label, { color: "#fff" }]}>Tap the poster for the trailer</Text>
+              </View>
+            </Animated.View>
+            <View style={{ position: "absolute", bottom: 16, left: 0, right: 0, alignItems: "center" }}>
+              <Pressable onPress={dismissCoach} style={{ backgroundColor: t.color.ink, paddingHorizontal: 24, height: 42, borderRadius: 999, alignItems: "center", justifyContent: "center" }}>
+                <Text style={[t.type.label, { color: t.color.inkInverse }]}>Got it</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
       </View>
 
       <View style={{ marginTop: t.space[6], flexDirection: "row", justifyContent: "center", gap: 6 }}>
-        <Pill tone="yes" leading size="sm" onPress={() => { onDecision(film, "watched", "loved"); advanceWatchedQuiet(); }}>Watched, liked it</Pill>
-        <Pill tone="watched" size="sm" onPress={() => { onDecision(film, "watched", "okay"); advanceWatchedQuiet(); }}>It was okay</Pill>
-        <Pill tone="no" leading size="sm" onPress={() => { onDecision(film, "watched", "disliked"); advanceWatchedQuiet(); }}>Not for me</Pill>
+        <Pill tone="yes" leading size="sm" onPress={() => flingWatched("loved")}>Watched, liked it</Pill>
+        <Pill tone="watched" size="sm" onPress={() => flingWatched("okay")}>It was okay</Pill>
+        <Pill tone="no" leading size="sm" onPress={() => flingWatched("disliked")}>Not for me</Pill>
       </View>
       <Micro style={{ textAlign: "center", marginTop: t.space[3] }}>{"←"} pass {"·"} like {"→"} {"·"} {"↑"} maybe {"·"} {"↓"} seen it {"·"} tap for trailer</Micro>
 
@@ -197,4 +243,18 @@ export function DeckScreen({ films, moods, onDecision, onDone, onBack }: {
     setIndex(nextIndex);
     if (nextIndex >= films.length) setTimeout(() => onDone(kept.current), 420);
   }
+}
+
+// A directional coach-mark chip drawn on the first card.
+function Cue({ style, arrow, label, color, trailing, pulse }: { style: object; arrow: string; label: string; color: string; trailing?: boolean; pulse: Animated.Value }) {
+  const t = useTheme();
+  return (
+    <Animated.View pointerEvents="none" style={[{ position: "absolute", opacity: pulse }, style]}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(10,11,15,0.72)", borderWidth: 1.5, borderColor: color, paddingHorizontal: 14, height: 36, borderRadius: 999 }}>
+        {!trailing ? <Text style={{ color, fontSize: 15 }}>{arrow}</Text> : null}
+        <Text style={{ color, fontFamily: t.fontFamily.bodySemiBold, fontSize: 14 }}>{label}</Text>
+        {trailing ? <Text style={{ color, fontSize: 15 }}>{arrow}</Text> : null}
+      </View>
+    </Animated.View>
+  );
 }

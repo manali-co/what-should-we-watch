@@ -1,7 +1,6 @@
 // Orchestrates the Tonight loop with real data:
 // Mood selector -> Thinking -> Deck (first-time tutorial layered on top) -> End, with empty/error states.
 import { useEffect, useState } from "react";
-import { View } from "react-native";
 import { fetchDeck, recordDecision } from "../../api";
 import type { Film } from "../../films";
 import { serviceLabel } from "../../films";
@@ -12,7 +11,6 @@ import { MoodScreen } from "./MoodScreen";
 import { ThinkingScreen } from "./ThinkingScreen";
 import { DeckScreen } from "./DeckScreen";
 import { EndScreen } from "./EndScreen";
-import { TutorialOverlay } from "./TutorialOverlay";
 import { EmptyDeck, ApiDown } from "./EdgeStates";
 
 const COMPANY: Record<string, string> = { me: "solo", two: "couple", group: "friends" };
@@ -20,9 +18,9 @@ const COMPANY: Record<string, string> = { me: "solo", two: "couple", group: "fri
 type Phase = "mood" | "thinking" | "deck" | "end" | "empty" | "error";
 
 export function TonightFlow({
-  services, onKeep, onOpenSettings, onOpenShortlist, firstTime, userInitial, userName, onTutorialSeen,
+  services, onKeep, onDecided, onOpenSettings, onOpenShortlist, firstTime, userInitial, userName, onTutorialSeen,
 }: {
-  services: string[]; onKeep: (films: Film[]) => void; onOpenSettings: () => void;
+  services: string[]; onKeep: (films: Film[]) => void; onDecided?: () => void; onOpenSettings: () => void;
   onOpenShortlist: () => void; firstTime?: boolean; userInitial?: string; userName?: string; onTutorialSeen?: () => void;
 }) {
   const [phase, setPhase] = useState<Phase>("mood");
@@ -63,7 +61,8 @@ export function TonightFlow({
   }, [phase, thinkingDone, pending, failed, films, firstTime]);
 
   const onDecision = (film: Film, action: "like" | "dislike" | "maybe" | "watched", reaction?: "loved" | "okay" | "disliked") => {
-    if (showTutorial) { setShowTutorial(false); onTutorialSeen?.(); }
+    onDecided?.();
+    if (action === "like" || action === "maybe") onKeep([film]); // land in the shortlist immediately
     void recordDecision({ titleId: film.id, title: film.title, action, reaction, moods });
   };
 
@@ -91,20 +90,14 @@ export function TonightFlow({
     return <EndScreen kept={kept} onOpenShortlist={() => { onOpenShortlist(); setPhase("mood"); }} onAgain={() => setPhase("mood")} />;
 
   return (
-    <View style={{ flex: 1 }}>
-      <DeckScreen
-        films={films}
-        moods={moods}
-        onDecision={onDecision}
-        onDone={(k) => { setKept(k); onKeep(k); setPhase("end"); }}
-        onBack={() => setPhase("mood")}
-      />
-      {showTutorial ? (
-        <TutorialOverlay
-          film={films[0] ? { title: films[0].title, year: films[0].year ?? undefined, runtime: films[0].runtimeMin ? `${Math.floor(films[0].runtimeMin / 60)} h ${films[0].runtimeMin % 60} m` : "", service: serviceLabel(films[0].service), why: films[0].why, posterUrl: films[0].posterUrl, tint: "#3E6B6F" } : undefined}
-          onDismiss={() => { setShowTutorial(false); onTutorialSeen?.(); }}
-        />
-      ) : null}
-    </View>
+    <DeckScreen
+      films={films}
+      moods={moods}
+      onDecision={onDecision}
+      onDone={(k) => { setKept(k); onKeep(k); setPhase("end"); }}
+      onBack={() => setPhase("mood")}
+      firstTime={showTutorial}
+      onSeenTutorial={() => { setShowTutorial(false); onTutorialSeen?.(); }}
+    />
   );
 }

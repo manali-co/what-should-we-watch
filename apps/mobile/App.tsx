@@ -46,6 +46,9 @@ function Root() {
   const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
   const { user } = useUser();
   const userInitial = (user?.firstName?.[0] ?? user?.username?.[0] ?? user?.primaryEmailAddress?.emailAddress?.[0] ?? "").toUpperCase();
+  const email = user?.primaryEmailAddress?.emailAddress ?? undefined;
+  const ext = user?.externalAccounts?.[0]?.provider ?? "";
+  const provider: "google" | "apple" | "email" = ext.includes("google") ? "google" : ext.includes("apple") ? "apple" : "email";
   const [started, setStarted] = useState(false);
   const [ready, setReady] = useState(false);
   const [onboarded, setOnboarded] = useState(false);
@@ -111,7 +114,6 @@ function Root() {
   const toggleService = (s: string) => { const n = services.includes(s) ? services.filter((x) => x !== s) : [...services, s]; setServices(n); persist({ services: n }); };
   const addToShortlist = (films: Film[]) => {
     setShortlist((prev) => { const ids = new Set(prev.map((f) => f.id)); return [...prev, ...films.filter((f) => !ids.has(f.id))]; });
-    setDecisions((d) => d + 10);
   };
   const reset = () => { void signOut(); AsyncStorage.removeItem(STORE).catch(() => {}); setServices([]); setOnboarded(false); setShortlist([]); setDecisions(0); setTab("tonight"); };
 
@@ -146,6 +148,7 @@ function Root() {
               <TonightFlow
                 services={services}
                 onKeep={addToShortlist}
+                onDecided={() => setDecisions((d) => d + 1)}
                 onOpenSettings={() => setTab("settings")}
                 onOpenShortlist={() => setTab("shortlist")}
                 firstTime={decisions === 0}
@@ -155,7 +158,7 @@ function Root() {
             )}
             {tab === "shortlist" && <ShortlistScreen films={shortlist} onRemove={(id) => setShortlist((p) => p.filter((f) => f.id !== id))} onWatch={(f) => f.link && Linking.openURL(f.link).catch(() => {})} />}
             {tab === "taste" && <TasteScreen decisions={decisions} />}
-            {tab === "settings" && <SettingsScreen services={services} onToggleService={toggleService} onReset={reset} onLogout={() => { void signOut(); setStarted(false); setTab("tonight"); }} faceId={faceId} onToggleFaceId={toggleFaceId} bioLabel={bioLabel} />}
+            {tab === "settings" && <SettingsScreen services={services} onToggleService={toggleService} onReset={reset} onLogout={() => { void signOut(); setStarted(false); setTab("tonight"); }} faceId={faceId} onToggleFaceId={toggleFaceId} bioLabel={bioLabel} provider={provider} email={email} />}
           </View>
           <View style={styles.nav}>
             {([["tonight", "Tonight"], ["shortlist", `Shortlist${shortlist.length ? ` ${shortlist.length}` : ""}`], ["taste", "Taste"], ["settings", "Settings"]] as [Tab, string][]).map(
