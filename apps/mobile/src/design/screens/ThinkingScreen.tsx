@@ -6,6 +6,7 @@ import { Headline, Micro, Screen, TopRow } from "../primitives";
 import { useTheme } from "../tokens";
 import type { MoodHue } from "../tokens";
 import { thinkingLines } from "../data";
+import { Mascot } from "../Mascot";
 import type { Film } from "../../films";
 
 const TINTS = ["#3E6B6F", "#8A5A3C", "#5B3F3A", "#4F6A5A", "#6C4B6E", "#5C5A6E", "#3A4A5E", "#4A6B8A", "#7A5C48", "#8A7A4A"];
@@ -32,7 +33,6 @@ export function ThinkingScreen({
     }
   }, [found]);
 
-  const discHues: MoodHue[] = (hues.length ? hues : (["coral", "lilac", "lagoon"] as MoodHue[])).slice(0, 4);
   const cols = 5;
   const gap = 10;
   const slotW = Math.min(72, (Math.min(width, 460) - t.space.pageInset * 2 - gap * (cols - 1)) / cols);
@@ -49,12 +49,8 @@ export function ThinkingScreen({
         }
       />
       <View style={{ paddingTop: t.space[7], gap: t.space[5] }}>
-        <View style={{ height: 88, justifyContent: "center" }}>
-          <View style={{ width: 120, height: 88 }}>
-            {discHues.map((h, i) => (
-              <DriftDisc key={i} hue={h} index={i} count={discHues.length} />
-            ))}
-          </View>
+        <View style={{ height: 96, justifyContent: "center" }}>
+          <Mascot state="thinking" size={96} />
         </View>
         <Headline size="l">
           {words.length ? (
@@ -111,30 +107,5 @@ function Slot({ film, tint, filled, w, h }: { film?: Film; tint: string; filled:
     <Animated.View style={{ width: w, height: h, borderRadius: 8, overflow: "hidden", backgroundColor: film?.posterUrl ? t.color.surfaceRaised : tint, transform: [{ scale: a }] }}>
       {film?.posterUrl ? <ImageBackground source={{ uri: film.posterUrl }} style={{ flex: 1 }} resizeMode="cover" /> : null}
     </Animated.View>
-  );
-}
-
-function DriftDisc({ hue, index, count }: { hue: MoodHue; index: number; count: number }) {
-  const t = useTheme();
-  const a = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(index * 180),
-        Animated.timing(a, { toValue: 1, duration: t.motion.duration.thinkingBeat, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(a, { toValue: 0, duration: t.motion.duration.thinkingBeat, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, []);
-  const angle = (index / count) * Math.PI * 2;
-  const left = 36 + Math.cos(angle) * 14;
-  const top = 20 + Math.sin(angle) * 14;
-  const drift = a.interpolate({ inputRange: [0, 1], outputRange: [0, 8] });
-  return (
-    <Animated.View
-      style={{ position: "absolute", left, top, width: 48, height: 48, borderRadius: 999, backgroundColor: t.color.mood[hue].fill, opacity: 0.9, transform: [{ translateX: drift }, { translateY: drift }] }}
-    />
   );
 }

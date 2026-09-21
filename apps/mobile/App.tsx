@@ -9,7 +9,7 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import * as LocalAuthentication from "expo-local-authentication";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useState } from "react";
-import { Linking, Platform, Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
+import { AppState, Linking, Platform, Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { setAuthTokenGetter } from "./src/api";
 import { publishableKey } from "./src/clerk";
@@ -99,10 +99,9 @@ function Root() {
               : types.includes(T.IRIS) ? "iris" : "biometrics",
         );
       }
-      if (faceId && enrolled) { setLocked(true); await runUnlock(); }
-      else setLocked(false);
+      setLocked(!!(faceId && enrolled)); // the lock screen fires the prompt itself
     })();
-  }, [isSignedIn, faceId, runUnlock]);
+  }, [isSignedIn, faceId]);
 
   const toggleFaceId = async (v: boolean) => {
     if (v && Platform.OS !== "web") {
@@ -133,13 +132,7 @@ function Root() {
       </SafeAreaView>
     );
   }
-  if (locked)
-    return (
-      <SafeAreaView style={[styles.root, styles.center]}>
-        <Text style={styles.lockTitle}>Locked</Text>
-        <Pressable style={styles.unlock} onPress={runUnlock}><Text style={styles.unlockText}>Unlock with {bioLabel}</Text></Pressable>
-      </SafeAreaView>
-    );
+  if (locked) return <LockScreen bioLabel={bioLabel} run={runUnlock} />;
 
   return (
     <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
@@ -178,6 +171,24 @@ function Root() {
           </View>
         </>
       )}
+    </SafeAreaView>
+  );
+}
+
+// Locked overlay — fires the biometric automatically on mount and whenever the app
+// returns to the foreground; the OS shows its own failure UI. Tap anywhere to retry.
+function LockScreen({ bioLabel, run }: { bioLabel: string; run: () => void }) {
+  useEffect(() => {
+    run();
+    const sub = AppState.addEventListener("change", (s) => { if (s === "active") run(); });
+    return () => sub.remove();
+  }, [run]);
+  return (
+    <SafeAreaView style={[styles.root, styles.center]}>
+      <Pressable style={[styles.root, styles.center]} onPress={run}>
+        <Text style={styles.lockTitle}>What Should We Watch</Text>
+        <Text style={{ color: darkColors.inkSecondary, fontFamily: fontFamily.body, fontSize: 15, marginTop: 8 }}>Unlocking with {bioLabel}…</Text>
+      </Pressable>
     </SafeAreaView>
   );
 }
