@@ -46,8 +46,10 @@ function Root() {
   const { user } = useUser();
   const userInitial = (user?.firstName?.[0] ?? user?.username?.[0] ?? user?.primaryEmailAddress?.emailAddress?.[0] ?? "").toUpperCase();
   const email = user?.primaryEmailAddress?.emailAddress ?? undefined;
-  const ext = user?.externalAccounts?.[0]?.provider ?? "";
-  const provider: "google" | "apple" | "email" = ext.includes("google") ? "google" : ext.includes("apple") ? "apple" : "email";
+  const externals = user?.externalAccounts ?? [];
+  const googleConnected = externals.some((a) => (a.provider ?? "").includes("google"));
+  const appleConnected = externals.some((a) => (a.provider ?? "").includes("apple"));
+  const provider: "google" | "apple" | "email" = googleConnected ? "google" : appleConnected ? "apple" : "email";
   const [started, setStarted] = useState(false);
   const [ready, setReady] = useState(false);
   const [onboarded, setOnboarded] = useState(false);
@@ -139,7 +141,7 @@ function Root() {
             )}
             {tab === "shortlist" && <ShortlistScreen films={shortlist} onRemove={(id) => setShortlist((p) => p.filter((f) => f.id !== id))} onWatch={(f) => f.link && Linking.openURL(f.link).catch(() => {})} />}
             {tab === "taste" && <TasteScreen decisions={decisions} />}
-            {tab === "settings" && <SettingsScreen services={services} onToggleService={toggleService} onReset={reset} onLogout={() => { void signOut(); setStarted(false); setTab("tonight"); }} provider={provider} email={email} country={country} />}
+            {tab === "settings" && <SettingsScreen services={services} onToggleService={toggleService} onReset={reset} onLogout={() => { void signOut(); setStarted(false); setTab("tonight"); }} provider={provider} appleConnected={appleConnected} googleConnected={googleConnected} email={email} country={country} />}
           </View>
           <View style={styles.nav}>
             {([["tonight", "Tonight"], ["shortlist", `Shortlist${shortlist.length ? ` ${shortlist.length}` : ""}`], ["taste", "Taste"], ["settings", "Settings"]] as [Tab, string][]).map(
