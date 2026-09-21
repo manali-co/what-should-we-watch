@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { randomUUID } from "expo-crypto";
 import { API_BASE } from "./theme";
 import { Film } from "./films";
 
@@ -23,7 +24,8 @@ async function deviceId(): Promise<string> {
   if (cachedDevice) return cachedDevice;
   let id = await AsyncStorage.getItem(DEVICE_KEY).catch(() => null);
   if (!id) {
-    id = "dev_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    // Crypto-secure so a device id can't be guessed to read another guest's taste data.
+    id = "dev_" + randomUUID();
     AsyncStorage.setItem(DEVICE_KEY, id).catch(() => {});
   }
   cachedDevice = id;
