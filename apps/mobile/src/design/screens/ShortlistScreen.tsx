@@ -9,13 +9,12 @@ import { Poster } from "../poster";
 import { useTheme } from "../tokens";
 import type { MoodHue } from "../tokens";
 import type { Film } from "../../films";
-import { serviceLabel } from "../../films";
+import { formatRuntime, serviceLabel } from "../../films";
 
 const TINTS = ["#3E6B6F", "#8A5A3C", "#5B3F3A", "#4F6A5A", "#6C4B6E", "#5C5A6E", "#3A4A5E", "#4A6B8A", "#7A5C48", "#8A7A4A"];
 const tintFor = (id: string) => TINTS[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % TINTS.length];
-const runtimeStr = (m?: number | null) => (m ? `${Math.floor(m / 60)} h ${m % 60} m` : "");
 const subtitleOf = (f: Film) =>
-  `${serviceLabel(f.service)} · ${runtimeStr(f.runtimeMin)}${f.leavingInDays ? ` · leaves in ${f.leavingInDays} days` : ""}`;
+  `${serviceLabel(f.service)} · ${formatRuntime(f.runtimeMin)}${f.leavingInDays ? ` · leaves in ${f.leavingInDays} days` : ""}`;
 
 export function ShortlistScreen({ films, onRemove, onWatch }: { films: Film[]; onRemove: (id: string) => void; onWatch: (f: Film) => void }) {
   const t = useTheme();

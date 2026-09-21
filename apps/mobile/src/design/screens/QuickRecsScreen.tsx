@@ -11,9 +11,8 @@ import { useTheme } from "../tokens";
 import type { MoodHue } from "../tokens";
 import { hueOf } from "../data";
 import type { Film } from "../../films";
-import { serviceLabel } from "../../films";
+import { formatRuntime, serviceLabel } from "../../films";
 
-const runtimeStr = (m?: number | null) => (m ? `${Math.floor(m / 60)} h ${m % 60} m` : "");
 
 export function QuickRecsScreen({
   films,
@@ -79,7 +78,7 @@ export function QuickRecsScreen({
 
 function RecRow({ film, onWatch }: { film: Film; onWatch: () => void }) {
   const t = useTheme();
-  const meta = [film.year, runtimeStr(film.runtimeMin)].filter(Boolean).join(" · ");
+  const meta = [film.year, formatRuntime(film.runtimeMin)].filter(Boolean).join(" · ");
   return (
     <View
       style={{
