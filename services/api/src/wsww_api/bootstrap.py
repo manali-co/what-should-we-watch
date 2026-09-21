@@ -11,12 +11,19 @@ from .settings import Settings, get_settings
 def build_deps() -> Deps:
     from .auth.jwks import APPLE_KEYS_URL, GOOGLE_KEYS_URL
     from .db import get_container
-    from .repositories import TokensRepo, UsersRepo
+    from .repositories import CatalogRepo, DecisionsRepo, TasteRepo, TokensRepo, UsersRepo
 
     settings = get_settings()
     signer = _build_signer(settings)
+    recs = _build_recs(settings)
+    clerk_jwks = _build_clerk(settings)
     return Deps(
         users=UsersRepo(get_container("users")),
+        catalog=CatalogRepo(get_container("catalog")),
+        decisions=DecisionsRepo(get_container("decisions")),
+        taste=TasteRepo(get_container("taste")),
+        recs=recs,
+        clerk_jwks=clerk_jwks,
         tokens_repo=TokensRepo(get_container("refreshTokens")),
         signer=signer,
         settings=settings,
@@ -40,3 +47,25 @@ def _build_signer(settings: Settings) -> TokenSigner:
 
         key = LocalEcKey()
     return TokenSigner(key, access_ttl_seconds=settings.access_ttl_seconds)
+
+
+def _build_recs(settings: Settings) -> object | None:
+    if not settings.openai_endpoint:
+        return None
+    from .db import get_raw_container
+    from .recs_adapter import AzureEmbedder, AzureRanker, build_openai_client
+    from .recs_engine import RecsEngine
+
+    client = build_openai_client(settings.openai_endpoint)
+    return RecsEngine(
+        get_raw_container("catalog"),
+        AzureEmbedder(client, settings.embedding_deployment),
+        AzureRanker(client, settings.ranking_deployment),
+    )
+
+
+def _build_clerk(settings: Settings) -> object | None:
+    if not settings.clerk_issuer:
+        return None
+    from .auth.clerk import ClerkJwks
+    return ClerkJwks(settings.clerk_issuer)

@@ -3,7 +3,7 @@ from wsww_api.auth.jwks import ProviderIdentity
 from wsww_api.auth.tokens import LocalEcKey, TokenSigner
 from wsww_api.db import InMemoryContainer
 from wsww_api.deps import Deps
-from wsww_api.repositories import TokensRepo, UsersRepo
+from wsww_api.repositories import CatalogRepo, DecisionsRepo, TasteRepo, TokensRepo, UsersRepo
 from wsww_api.settings import Settings
 
 
@@ -24,6 +24,11 @@ def build_app(apple_map=None, google_map=None):
 
     deps = Deps(
         users=UsersRepo(InMemoryContainer()),
+        catalog=CatalogRepo(InMemoryContainer()),
+        decisions=DecisionsRepo(InMemoryContainer()),
+        taste=TasteRepo(InMemoryContainer()),
+        recs=None,
+        clerk_jwks=None,
         tokens_repo=TokensRepo(InMemoryContainer()),
         signer=TokenSigner(LocalEcKey(), access_ttl_seconds=900),
         settings=Settings(apple_bundle_ids=["app.manali.wsww"], google_client_ids=["c1"]),
