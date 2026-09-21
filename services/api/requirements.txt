@@ -1,0 +1,10 @@
+azure-functions>=1.21
+fastapi>=0.115
+uvicorn>=0.30
+azure-cosmos>=4.7
+azure-identity>=1.17
+azure-keyvault-keys>=4.9
+pyjwt[crypto]>=2.9
+httpx>=0.27
+pydantic>=2.8
+pydantic-settings>=2.4
