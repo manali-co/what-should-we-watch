@@ -92,8 +92,10 @@ Profiles are defined in `eas.json`:
   ```sh
   eas build --profile development --platform ios      # or android / all
   ```
-- **preview** — internal distribution, installable builds for TestFlight / internal
-  testing (`ios.simulator: false`, Android APK):
+- **preview** — internal distribution: directly-installable ad-hoc / APK builds for
+  your own testers (`ios.simulator: false`, Android APK). This is **not** TestFlight —
+  TestFlight builds come from the **production** (store) profile, uploaded via
+  `eas submit` (§6):
   ```sh
   eas build --profile preview --platform all
   ```
@@ -127,9 +129,15 @@ Profiles are defined in `eas.json`:
 1. In **Google Play Console** → **Create app** → set the app name and package
    `co.manali.wsww`. You must upload a first build to the chosen track before the
    listing can go live.
-2. Create a **Google Cloud service account** with the *Service Account User* role,
-   grant it access in Play Console (**Users and permissions**), and download its
-   **JSON key**. Save it as `apps/mobile/play-service-account.json`.
+2. Set up API access so `eas submit` can upload on your behalf:
+   1. In **Google Cloud Console**, enable the **Google Play Android Developer API**
+      for the project, and create a **service account** (download its **JSON key**).
+   2. In **Play Console → Setup → API access**, link that Google Cloud project and
+      grant the service account access.
+   3. In **Play Console → Users and permissions**, add the service account and give it
+      at least *Release to testing tracks* / *Release to production* (app or
+      account-level) permissions.
+   4. Save the JSON key as `apps/mobile/play-service-account.json`.
    - This file is **git-ignored** — never commit it.
    - `eas.json` → `submit.production.android.serviceAccountKeyPath` already points at
      `./play-service-account.json`; `track` is set to `internal`.
@@ -150,8 +158,10 @@ With `appVersionSource: "remote"`, `autoIncrement` handles `buildNumber` /
 
 ## Notes
 
-- **Privacy / account deletion (Apple Guideline 5.1.1(v))** is already handled in-app —
-  no additional store configuration is required for that requirement.
+- **Privacy / account deletion (Apple Guideline 5.1.1(v))** is handled in-app: the
+  Account screen's **Delete account** control runs Clerk's real `user.delete()` (shipped
+  in the guest-mode / account work), so no additional store configuration is required
+  for that requirement. Confirm the flow is present in the build you submit.
 - `ITSAppUsesNonExemptEncryption` is already set to `false` in `app.json`, so no export
   compliance questionnaire is needed at submit time.
 - Credential placeholders live in `eas.json` (`REPLACE_ME_*`) and the Play key path.
