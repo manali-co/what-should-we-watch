@@ -1,6 +1,6 @@
 import { FontAwesome } from "@expo/vector-icons";
-import { useSignIn, useSignUp, useSSO } from "@clerk/expo";
-import { useState } from "react";
+import { useBiometricCredentials, useSignIn, useSignUp, useSSO } from "@clerk/expo";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View,
 } from "react-native";
@@ -13,6 +13,9 @@ export function SignIn() {
   const { startSSOFlow } = useSSO();
   const { signIn, fetchStatus: siFetching } = useSignIn();
   const { signUp } = useSignUp();
+  const { getAvailability, signIn: bioSignIn } = useBiometricCredentials();
+  const [bioAvail, setBioAvail] = useState(false);
+  useEffect(() => { getAvailability().then((a) => setBioAvail(a.isAvailable)).catch(() => setBioAvail(false)); }, []);
   const [mode, setMode] = useState<"choices" | "email" | "code">("choices");
   const [path, setPath] = useState<"in" | "up">("in");
   const [email, setEmail] = useState("");
@@ -66,6 +69,17 @@ export function SignIn() {
     } finally { setBusy(false); }
   };
 
+  const doBiometric = async () => {
+    setErr(null); setBusy(true);
+    try {
+      const res = await bioSignIn({ reason: "Sign in to What Should We Watch" });
+      if (res.createdSessionId && res.setActive) await res.setActive({ session: res.createdSessionId });
+      else if (res.status !== "complete") setErr("Couldn't finish Face ID sign-in.");
+    } catch {
+      setErr("Face ID sign-in didn't work. Try another way.");
+    } finally { setBusy(false); }
+  };
+
   const loading = busy || siFetching === "fetching";
 
   return (
@@ -83,6 +97,12 @@ export function SignIn() {
       <View style={styles.bottom}>
         {mode === "choices" && (
           <>
+            {bioAvail && (
+              <Pressable style={styles.google} onPress={doBiometric} disabled={loading}>
+                <FontAwesome name="user-secret" size={17} color="#16171D" />
+                <Text style={styles.googleText}>Sign in with Face ID</Text>
+              </Pressable>
+            )}
             <View style={styles.appleDisabled}>
               <FontAwesome name="apple" size={19} color={theme.muted} />
               <Text style={styles.appleDisabledText}>Continue with Apple</Text>
