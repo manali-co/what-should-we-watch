@@ -1,16 +1,14 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useRef, useState } from "react";
 import {
-  Animated, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions,
+  Animated, ImageBackground, PanResponder, Pressable, StyleSheet, Text, View,
+  useWindowDimensions,
 } from "react-native";
-import { Film } from "./films";
+import { Film, serviceLabel } from "./films";
 import { font, theme } from "./theme";
 
 type Decision = "dislike" | "like" | "maybe" | "watched";
 const SWIPE = 110;
-
-function cardHue(i: number) {
-  return theme.moodHues[i % theme.moodHues.length];
-}
 
 export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) => void }) {
   const { width } = useWindowDimensions();
@@ -28,12 +26,13 @@ export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) 
     return pos.y.interpolate({ inputRange: [-SWIPE, 0], outputRange: [1, 0] });
   };
 
-  const advance = (film: Film, decision: Decision) => {
-    if (decision === "like" || decision === "maybe") setKept((k) => [...k, film]);
+  const advance = (f: Film, decision: Decision) => {
+    if (decision === "like" || decision === "maybe") setKept((k) => [...k, f]);
     pos.setValue({ x: 0, y: 0 });
     const nextIndex = index + 1;
     setIndex(nextIndex);
-    if (nextIndex >= films.length) onDone(decision === "like" || decision === "maybe" ? [...kept, film] : kept);
+    if (nextIndex >= films.length)
+      onDone(decision === "like" || decision === "maybe" ? [...kept, f] : kept);
   };
 
   const fling = (decision: Decision, to: { x: number; y: number }) => {
@@ -57,36 +56,45 @@ export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) 
   ).current;
 
   if (!film) return null;
+  const rotate = pos.x.interpolate({ inputRange: [-width, 0, width], outputRange: ["-14deg", "0deg", "14deg"] });
 
-  const rotate = pos.x.interpolate({ inputRange: [-width, 0, width], outputRange: ["-16deg", "0deg", "16deg"] });
+  const Card = ({ f, top }: { f: Film; top?: boolean }) => (
+    <ImageBackground
+      source={{ uri: f.posterUrl }}
+      style={styles.card}
+      imageStyle={styles.cardImg}
+    >
+      <LinearGradient colors={["rgba(10,11,15,0.05)", "rgba(10,11,15,0.55)", "rgba(10,11,15,0.96)"]}
+        locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
+      {f.wildcard && <Text style={styles.wild}>Wildcard</Text>}
+      <View style={{ flex: 1 }} />
+      <Text style={styles.title}>{f.title}</Text>
+      <Text style={styles.meta}>
+        {[f.year, f.runtimeMin ? `${f.runtimeMin} min` : null].filter(Boolean).join(" · ")}
+      </Text>
+      <Text style={styles.why}>{f.why}</Text>
+      <Text style={styles.svc}>
+        On {serviceLabel(f.service)}{f.leavingInDays != null ? ` · leaving in ${f.leavingInDays} days` : ""}
+      </Text>
+      {top && (
+        <>
+          <Animated.Text style={[styles.stamp, styles.stampYes, { opacity: stampOpacity("like") }]}>LIKE</Animated.Text>
+          <Animated.Text style={[styles.stamp, styles.stampNo, { opacity: stampOpacity("dislike") }]}>PASS</Animated.Text>
+          <Animated.Text style={[styles.stamp, styles.stampMaybe, { opacity: stampOpacity("maybe") }]}>MAYBE</Animated.Text>
+        </>
+      )}
+    </ImageBackground>
+  );
 
   return (
     <View style={styles.wrap}>
       <View style={styles.deck}>
-        {next && (
-          <View style={[styles.card, styles.under, { backgroundColor: cardHue(index + 1) }]}>
-            <Text style={styles.title}>{next.title}</Text>
-          </View>
-        )}
+        {next && <View style={[styles.cardHolder, styles.under]}><Card f={next} /></View>}
         <Animated.View
           {...pan.panHandlers}
-          style={[
-            styles.card,
-            { backgroundColor: cardHue(index), transform: [{ translateX: pos.x }, { translateY: pos.y }, { rotate }] },
-          ]}
+          style={[styles.cardHolder, { transform: [{ translateX: pos.x }, { translateY: pos.y }, { rotate }] }]}
         >
-          {film.wildcard && <Text style={styles.wild}>Wildcard</Text>}
-          <Text style={styles.title}>{film.title}</Text>
-          <Text style={styles.meta}>{film.year} · {film.runtimeMin} min</Text>
-          <View style={{ flex: 1 }} />
-          <Text style={styles.why}>{film.why}</Text>
-          <Text style={styles.svc}>
-            On {film.service}{film.leavingInDays ? ` · leaving in ${film.leavingInDays} days` : ""}
-          </Text>
-
-          <Animated.Text style={[styles.stamp, styles.stampYes, { opacity: stampOpacity("like") }]}>LIKE</Animated.Text>
-          <Animated.Text style={[styles.stamp, styles.stampNo, { opacity: stampOpacity("dislike") }]}>PASS</Animated.Text>
-          <Animated.Text style={[styles.stamp, styles.stampMaybe, { opacity: stampOpacity("maybe") }]}>MAYBE</Animated.Text>
+          <Card f={film} top />
         </Animated.View>
       </View>
 
@@ -97,11 +105,11 @@ export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) 
         <Pressable style={[styles.act, styles.actYes]} onPress={() => fling("like", { x: 900, y: 0 })}>
           <Text style={[styles.actText, { color: "#16171D" }]}>Like</Text>
         </Pressable>
-        <Pressable style={[styles.act, { borderColor: theme.moodHues[1] }]} onPress={() => fling("maybe", { x: 0, y: -900 })}>
-          <Text style={[styles.actText, { color: theme.moodHues[1] }]}>Maybe</Text>
+        <Pressable style={[styles.act, { borderColor: theme.lilac }]} onPress={() => fling("maybe", { x: 0, y: -900 })}>
+          <Text style={[styles.actText, { color: theme.lilac }]}>Maybe</Text>
         </Pressable>
       </View>
-      <Text style={styles.hint}>Swipe left to pass, right to like, up for maybe, down if you've seen it.</Text>
+      <Text style={styles.hint}>Left pass · right like · up maybe · down if you've seen it</Text>
 
       {reactFor && (
         <View style={styles.sheet}>
@@ -110,7 +118,7 @@ export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) 
             {[["Loved it", theme.yes], ["It was okay", theme.muted], ["Not for me", theme.no]].map(([label, c]) => (
               <Pressable key={label as string} style={[styles.rpill, { borderColor: c as string }]}
                 onPress={() => { setReactFor(null); advance(reactFor, "watched"); }}>
-                <Text style={{ color: c as string, fontWeight: "600" }}>{label}</Text>
+                <Text style={{ color: c as string, fontFamily: font.bodySemi }}>{label}</Text>
               </Pressable>
             ))}
           </View>
@@ -121,29 +129,28 @@ export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) 
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, paddingHorizontal: 22 },
-  deck: { flex: 1, marginTop: 8, marginBottom: 8 },
-  card: {
-    position: "absolute", left: 0, right: 0, top: 0, bottom: 0, borderRadius: 26,
-    padding: 22, justifyContent: "flex-start", overflow: "hidden",
-  },
-  under: { transform: [{ scale: 0.94 }, { translateY: 16 }], opacity: 0.5 },
-  wild: { alignSelf: "flex-start", color: "#16171D", borderColor: "#16171D", borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2, fontSize: 12, marginBottom: 8, opacity: 0.8 },
-  title: { fontFamily: font.display, fontSize: 34, color: "#16171D", letterSpacing: -1.2, lineHeight: 36 },
-  meta: { fontFamily: font.bodyMed, fontSize: 15, color: "#16171D", opacity: 0.8, marginTop: 8 },
-  why: { fontFamily: font.body, fontSize: 17, color: "#16171D", lineHeight: 23 },
-  svc: { fontFamily: font.body, fontSize: 14, color: "#16171D", opacity: 0.85, marginTop: 12 },
-  stamp: { position: "absolute", top: 22, fontSize: 26, fontWeight: "900", borderWidth: 3, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 2 },
+  wrap: { flex: 1, paddingHorizontal: 18 },
+  deck: { flex: 1, marginTop: 8, marginBottom: 10 },
+  cardHolder: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 },
+  card: { flex: 1, borderRadius: 26, overflow: "hidden", padding: 20, justifyContent: "flex-end", backgroundColor: theme.surface2 },
+  cardImg: { borderRadius: 26 },
+  under: { transform: [{ scale: 0.94 }, { translateY: 16 }], opacity: 0.6 },
+  wild: { position: "absolute", top: 18, left: 18, color: "#fff", borderColor: "#fff", borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2, fontSize: 12, fontFamily: font.bodyMed, opacity: 0.9 },
+  title: { fontFamily: font.display, fontSize: 34, color: "#fff", letterSpacing: -1.2, lineHeight: 36 },
+  meta: { fontFamily: font.bodyMed, fontSize: 15, color: "#fff", opacity: 0.85, marginTop: 6 },
+  why: { fontFamily: font.body, fontSize: 15.5, color: "#fff", opacity: 0.92, marginTop: 10, lineHeight: 21 },
+  svc: { fontFamily: font.bodyMed, fontSize: 13.5, color: "#fff", opacity: 0.8, marginTop: 12 },
+  stamp: { position: "absolute", top: 24, fontFamily: font.display, fontSize: 26, borderWidth: 3, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 2, color: "#fff" },
   stampYes: { right: 22, color: theme.yes, borderColor: theme.yes, transform: [{ rotate: "12deg" }] },
   stampNo: { left: 22, color: theme.no, borderColor: theme.no, transform: [{ rotate: "-12deg" }] },
-  stampMaybe: { alignSelf: "center", top: 22, color: theme.moodHues[1], borderColor: theme.moodHues[1] },
-  actions: { flexDirection: "row", gap: 10, marginTop: 4 },
+  stampMaybe: { alignSelf: "center", color: theme.lilac, borderColor: theme.lilac },
+  actions: { flexDirection: "row", gap: 10 },
   act: { flex: 1, borderWidth: 1.5, borderRadius: 999, paddingVertical: 15, alignItems: "center" },
   actYes: { backgroundColor: theme.ink, borderColor: theme.ink, flex: 1.3 },
   actText: { fontFamily: font.bodySemi, fontSize: 16 },
-  hint: { color: theme.muted, fontSize: 12, textAlign: "center", marginTop: 10 },
-  sheet: { position: "absolute", left: 22, right: 22, bottom: 24, backgroundColor: theme.surface, borderRadius: 20, padding: 18, borderWidth: 1, borderColor: theme.line },
-  sheetTitle: { color: theme.ink, fontSize: 16, fontWeight: "600", marginBottom: 12 },
+  hint: { color: theme.muted, fontFamily: font.body, fontSize: 12, textAlign: "center", marginTop: 10 },
+  sheet: { position: "absolute", left: 18, right: 18, bottom: 20, backgroundColor: theme.surface, borderRadius: 20, padding: 18, borderWidth: 1, borderColor: theme.line },
+  sheetTitle: { color: theme.ink, fontFamily: font.bodySemi, fontSize: 16, marginBottom: 12 },
   pillRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   rpill: { borderWidth: 1.5, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 14 },
 });
