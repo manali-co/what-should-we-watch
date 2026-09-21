@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.filter.outputs.api }}
+      mobile: ${{ steps.filter.outputs.mobile }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -23,6 +24,9 @@ jobs:
             api:
               - 'services/api/**'
               - 'packages/**'
+              - '.github/workflows/ci.yml'
+            mobile:
+              - 'apps/mobile/**'
               - '.github/workflows/ci.yml'
 
   api:
@@ -45,3 +49,22 @@ jobs:
         run: uv run mypy src
       - name: Test
         run: uv run pytest -q
+
+  mobile:
+    needs: changes
+    if: ${{ needs.changes.outputs.mobile == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Test
+        run: npx jest --ci
