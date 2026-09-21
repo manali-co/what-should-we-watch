@@ -1,22 +1,48 @@
-// "Moods in colour": near-black chrome, warm off-white ink. Colour lives on moods
-// and decisions only. Mood hues match the logo's three discs.
 export const theme = {
-  bg: "#14151A",
+  bg: "#16171D",
   surface: "#1E2027",
   surface2: "#282B34",
-  ink: "#ECE9E1",
-  muted: "#9B9CAA",
+  ink: "#F0ECE3",
+  muted: "#9A9BA8",
   line: "#33363F",
-  yes: "#5F9E7E",
-  no: "#B5705E",
-  moodHues: ["#E8796F", "#AE9BE0", "#4DBFB0", "#E8B15C", "#7FA7D9", "#D98FB0"],
+  yes: "#6BA687",
+  no: "#C1745F",
+  // mood hue families
+  coral: "#E8796F",
+  lilac: "#AE9BE0",
+  lagoon: "#4DBFB0",
+  amber: "#E7B15A",
+  sky: "#7FA7D9",
+  rose: "#D98FB0",
+  moodHues: ["#E8796F", "#AE9BE0", "#4DBFB0", "#E7B15A", "#7FA7D9", "#D98FB0"],
 };
 
+// warm=coral, cerebral=lilac, slow/beauty=lagoon, fun=amber, wistful=sky, tender=rose
+export const MOOD_HUE: Record<string, string> = {
+  cozy: theme.coral, "date night": theme.coral, romance: theme.coral, "cry it out": theme.coral,
+  "feel-good": theme.amber, "big laughs": theme.amber, "brain off": theme.amber, chaotic: theme.amber,
+  "slow burn": theme.lagoon, "gorgeous to look at": theme.lagoon, "quiet and tender": theme.lagoon,
+  "mind-bender": theme.lilac, "dark and twisty": theme.lilac, "cult classic": theme.lilac, "sharp satire": theme.lilac,
+  "rainy Sunday": theme.sky, "comfort rewatch": theme.sky, "coming of age": theme.sky, nostalgic: theme.sky,
+  "true story": theme.rose, "road trip": theme.rose, underdog: theme.rose, whodunit: theme.rose,
+  "properly scary": theme.lilac, "outer space": theme.sky, "a proper epic": theme.amber, "foreign gem": theme.lagoon,
+};
+
+export const hue = (m: string) => MOOD_HUE[m] ?? theme.coral;
+
 export const MOODS = [
-  "cozy", "slow burn", "big laughs", "mind-bender", "rainy Sunday", "date night",
-  "edge of the seat", "nostalgic", "feel-good", "dark and twisty", "a proper epic",
-  "true story", "foreign gem", "cult classic", "quiet and tender", "properly scary",
-  "outer space", "road trip", "underdog", "whodunit", "coming of age", "comfort rewatch",
+  "feel-good", "slow burn", "cozy", "cry it out", "date night", "romance", "quiet and tender",
+  "mind-bender", "dark and twisty", "cult classic", "sharp satire", "gorgeous to look at",
+  "rainy Sunday", "comfort rewatch", "coming of age", "true story", "big laughs", "road trip",
+  "chaotic", "brain off", "whodunit", "outer space",
 ];
 
 export const API_BASE = "https://wsww-dev-api.azurewebsites.net";
+
+export const font = {
+  display: "BricolageGrotesque_800ExtraBold",
+  displaySemi: "BricolageGrotesque_600SemiBold",
+  body: "Figtree_400Regular",
+  bodyMed: "Figtree_500Medium",
+  bodySemi: "Figtree_600SemiBold",
+};
