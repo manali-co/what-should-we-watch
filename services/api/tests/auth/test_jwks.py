@@ -32,3 +32,16 @@ def test_expired_rejected(mint, jwks_for) -> None:
     with pytest.raises(AppError) as e:
         verify_apple(token, ["app.manali.wsww"], jwks_for())
     assert e.value.code == "session_expired"
+
+
+def test_malformed_token_is_bad_token(jwks_for) -> None:
+    with pytest.raises(AppError) as e:
+        verify_apple("not-a-jwt", ["app.manali.wsww"], jwks_for())
+    assert e.value.code == "bad_token"
+    assert e.value.status == 401
+
+
+def test_empty_audience_list_still_bad_token_for_junk(jwks_for) -> None:
+    with pytest.raises(AppError) as e:
+        verify_google("junk.junk.junk", [], jwks_for())
+    assert e.value.code == "bad_token"

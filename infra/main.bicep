@@ -45,6 +45,7 @@ module identity 'modules/identity.bicep' = {
     principalId: functions.outputs.principalId
     keyVaultName: kv.outputs.keyVaultName
     storageAccountName: storage.outputs.storageAccountName
+    deployStorageAccountName: functions.outputs.deployStorageName
     cosmosAccountName: cosmos.outputs.accountName
   }
 }

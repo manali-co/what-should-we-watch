@@ -46,7 +46,10 @@ class HttpJwks:
 
 
 def _signing_key(token: str, source: JwksSource) -> Any:
-    header = jwt.get_unverified_header(token)
+    try:
+        header = jwt.get_unverified_header(token)
+    except jwt.InvalidTokenError as exc:
+        raise AppError("bad_token", "Malformed identity token.", 401) from exc
     kid = header.get("kid")
     jwks = PyJWKSet.from_dict(source.get_keys())
     for key in jwks.keys:

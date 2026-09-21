@@ -63,3 +63,4 @@ output principalId string = fn.identity.principalId
 output functionAppName string = fn.name
 output defaultHostName string = fn.properties.defaultHostName
 output deployStorageId string = fnstorage.id
+output deployStorageName string = fnstorage.name
