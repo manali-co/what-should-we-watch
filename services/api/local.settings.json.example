@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "WSWW_ENV": "dev",
+    "WSWW_COSMOS_ENDPOINT": "https://<account>.documents.azure.com:443/",
+    "WSWW_COSMOS_DATABASE": "wsww",
+    "WSWW_KEYVAULT_URI": "https://<vault>.vault.azure.net/",
+    "WSWW_SIGNING_KEY_NAME": "wsww-api-signing",
+    "WSWW_APPLE_BUNDLE_IDS": "[\"app.manali.wsww\"]",
+    "WSWW_GOOGLE_CLIENT_IDS": "[\"<google-client-id>\"]"
+  }
+}

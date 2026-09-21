@@ -1,0 +1,9 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "separate-pull-requests": true,
+  "packages": {
+    "services/api": { "release-type": "python", "component": "api" },
+    "packages/recs": { "release-type": "python", "component": "recs" },
+    "apps/mobile": { "release-type": "node", "component": "mobile" }
+  }
+}
