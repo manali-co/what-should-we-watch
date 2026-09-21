@@ -18,3 +18,8 @@ bin/
 obj/
 # OS/editor
 .DS_Store
+
+# local env
+.env
+.env.*
+apps/mobile/.env*

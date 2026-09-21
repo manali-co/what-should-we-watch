@@ -12,8 +12,20 @@ from ._common import deps_of
 router = APIRouter(tags=["catalog"])
 
 
-def _device_id(request: Request) -> str:
-    return request.headers.get("x-device-id", "").strip()[:64]
+def _identity(request: Request) -> str:
+    """A stable id for personalisation: the verified Clerk user when signed in,
+    else the device id. Namespaced so the two never collide."""
+    deps = deps_of(request)
+    auth = request.headers.get("authorization", "")
+    if auth.lower().startswith("bearer ") and deps.clerk_jwks is not None:
+        from ..auth.clerk import verify_clerk_token
+        try:
+            sub = verify_clerk_token(auth.split(" ", 1)[1], deps.clerk_jwks)
+            return "clerk:" + sub
+        except Exception:  # noqa: BLE001 - bad token -> fall back to device id
+            pass
+    dev = request.headers.get("x-device-id", "").strip()[:64]
+    return "dev:" + dev if dev else ""
 
 
 @router.get("/catalog/deck")
@@ -34,7 +46,7 @@ async def deck(
     deps = deps_of(request)
     svc = [s for s in services.split(",") if s]
     mood_list = [m for m in moods.split(",") if m]
-    device = _device_id(request)
+    device = _identity(request)
 
     if mood_list and deps.recs is not None:
         from ..recs_engine import DeckRequest, Moment
@@ -61,7 +73,7 @@ async def deck(
 @router.post("/catalog/decisions", status_code=204)
 async def record_decision(request: Request) -> None:
     deps = deps_of(request)
-    device = _device_id(request)
+    device = _identity(request)
     if not device:
         return None
     body = await request.json()
