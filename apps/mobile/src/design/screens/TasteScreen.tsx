@@ -6,6 +6,7 @@ import { Body, Headline, Micro, Screen, TopRow } from "../primitives";
 import { Pill, PillRow } from "../controls";
 import { ListRow, SectionLabel } from "../surfaces";
 import { Poster } from "../poster";
+import { ConvertNudge } from "./ConvertNudge";
 import { useTheme } from "../tokens";
 import { hueOf } from "../data";
 
@@ -32,7 +33,9 @@ const NOTICED: { signal: string; text: string; mood: string; title: string; id: 
   { signal: "Summer", text: "Summer evenings lean bright and a little chaotic.", mood: "chaotic", title: "Ocean’s Eleven", id: "oceans" },
 ];
 
-export function TasteScreen({ decisions }: { decisions: number }) {
+export function TasteScreen({ decisions, showNudge = false, onNudgeSignIn, onNudgeDismiss }: {
+  decisions: number; showNudge?: boolean; onNudgeSignIn?: () => void; onNudgeDismiss?: () => void;
+}) {
   const t = useTheme();
   // Illustrative tallies from the design; the session's decision count folds into the yes bucket.
   const told: [string, number, "yes" | "no" | null][] = [
@@ -47,6 +50,7 @@ export function TasteScreen({ decisions }: { decisions: number }) {
       <TopRow left={<Headline size="m">Taste</Headline>} />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: t.space[9] }} showsVerticalScrollIndicator={false}>
+        <ConvertNudge kind="taste" visible={showNudge} onSignIn={onNudgeSignIn ?? (() => {})} onDismiss={onNudgeDismiss ?? (() => {})} />
         <View style={{ paddingTop: t.space[5], gap: t.space[4] }}>
           <Headline size="l">You like films that take their time, as long as they’re under two hours.</Headline>
           <Body size="l">

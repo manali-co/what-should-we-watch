@@ -64,6 +64,7 @@ function Root() {
   // Guest mode: the full core loop works signed-out on this phone. Account-only
   // features (sync, group, account, export, delete) open a sign-in Gate instead.
   const [guest, setGuest] = useState(false);
+  const [dismissedNudges, setDismissedNudges] = useState<Record<string, boolean>>({});
   const [showAccount, setShowAccount] = useState(false);
   const [gate, setGate] = useState<GateFeature | null>(null);
   const [signInOverlay, setSignInOverlay] = useState(false);
@@ -78,7 +79,7 @@ function Root() {
   useEffect(() => {
     AsyncStorage.getItem(STORE).then((raw) => {
       if (raw) {
-        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); setGuest(!!s.guest); } catch {}
+        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); setGuest(!!s.guest); setDismissedNudges(s.dismissedNudges ?? {}); } catch {}
       }
       setReady(true);
     });
@@ -108,8 +109,8 @@ function Root() {
   };
   const declineBio = () => { setBioAsked(true); setBioOffer(false); persist({ bioAsked: true }); };
 
-  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string; guest?: boolean }) =>
-    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, guest, ...next })).catch(() => {});
+  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string; guest?: boolean; dismissedNudges?: Record<string, boolean> }) =>
+    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, guest, dismissedNudges, ...next })).catch(() => {});
   const finishOnboarding = (svcs: string[], countryName: string, name: string) => {
     setServices(svcs); setCountry(countryName); setDisplayName(name); setOnboarded(true);
     persist({ services: svcs, country: countryName, displayName: name, onboarded: true });
@@ -122,6 +123,7 @@ function Root() {
   const resetLearned = () => { setShortlist([]); setDecisions(0); };
   const continueAsGuest = () => { setGuest(true); persist({ guest: true }); };
   const openSignIn = () => { setGate(null); setShowAccount(false); setSignInOverlay(true); };
+  const dismissNudge = (kind: string) => { const next = { ...dismissedNudges, [kind]: true }; setDismissedNudges(next); persist({ dismissedNudges: next }); };
   const saveName = (name: string) => { setDisplayName(name); persist({ displayName: name }); void user?.update({ firstName: name })?.catch(() => {}); };
   const doExport = async () => {
     const payload = JSON.stringify(
@@ -202,8 +204,24 @@ function Root() {
                 country={country}
               />
             )}
-            {tab === "shortlist" && <ShortlistScreen films={shortlist} onRemove={(id) => setShortlist((p) => p.filter((f) => f.id !== id))} onWatch={(f) => f.link && Linking.openURL(f.link).catch(() => {})} />}
-            {tab === "taste" && <TasteScreen decisions={decisions} />}
+            {tab === "shortlist" && (
+              <ShortlistScreen
+                films={shortlist}
+                onRemove={(id) => setShortlist((p) => p.filter((f) => f.id !== id))}
+                onWatch={(f) => f.link && Linking.openURL(f.link).catch(() => {})}
+                showNudge={guest && !isSignedIn && shortlist.length >= 3 && !dismissedNudges.shortlist}
+                onNudgeSignIn={openSignIn}
+                onNudgeDismiss={() => dismissNudge("shortlist")}
+              />
+            )}
+            {tab === "taste" && (
+              <TasteScreen
+                decisions={decisions}
+                showNudge={guest && !isSignedIn && !dismissedNudges.taste}
+                onNudgeSignIn={openSignIn}
+                onNudgeDismiss={() => dismissNudge("taste")}
+              />
+            )}
             {tab === "settings" && (
               <SettingsScreen
                 isGuest={guest && !isSignedIn}

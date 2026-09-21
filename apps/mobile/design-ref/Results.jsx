@@ -32,27 +32,33 @@ function EndOfDeck({ app, set }) {
 }
 
 function Shortlist({ app, set, variant }) {
-  const { Button, Poster, ListRow, SectionLabel } = useC();
+  const { Button, Poster, ListRow, SectionLabel, Toast } = useC();
+  const offline = variant === 'offline' || app.offline;
+  const [offToast, setOffToast] = React.useState(null);
+  React.useEffect(() => { if (!offToast) return; const id = setTimeout(() => setOffToast(null), 2800); return () => clearTimeout(id); }, [offToast]);
   const { yes, maybe } = ranked(app);
   const empty = variant === 'empty' || (!yes.length && !maybe.length);
-  const watch = f => { set({ pendingFollowUp: f.id, watchNowTapped: true }); };
+  const watch = f => { if (offline) return setOffToast(f); if (!app.notifAsked && app.followUp !== false) return set({ pendingFollowUp: f.id, route: 'notif', returnTo: 'shortlist', watchNowTapped: true }); set({ pendingFollowUp: f.id, watchNowTapped: true }); };
   const row = (f, i, arr) => (
     <ListRow key={f.id} title={f.title} subtitle={`${f.service} · ${f.runtime}${f.expiresInDays ? ` · leaves in ${f.expiresInDays} days` : ''}`}
       leading={<Poster title={f.title} tint={f.tint} width={44} height={66} radius={6} />}
       trailing={<Button size="sm" variant={i === 0 && arr === yes ? 'primary' : 'secondary'} onClick={() => watch(f)}>Watch now</Button>} last={i === arr.length - 1} />
   );
   return (
-    <Screen>
+    <Screen style={{ paddingBottom: 'calc(50px + var(--safe-bottom))' }}>
       <TopRow left={<Headline size="m">Shortlist</Headline>} right={<Button variant="ghost" size="sm" onClick={() => set({ route: 'mood' })}>New mood</Button>} />
-      {variant === 'offline' ? <Offline what="your shortlist" detail="It's saved on this phone. Watch now needs a connection to open the streaming app." /> :
-        empty ? <Empty title="Nothing shortlisted yet." body="Swipe right on anything in the deck and it lands here, sorted by how sure you were." action="Deal ten" onAction={() => set({ route: 'mood' })} /> : (
+      {offline && <div style={{ marginTop: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', font: 'var(--type-caption)', color: 'var(--color-ink-secondary)' }}><span style={{ width: 8, height: 8, borderRadius: 99, background: 'var(--color-ink-tertiary)' }} />You’re offline. Your shortlist is saved on this phone; Watch now needs a connection.</div>}
+      {empty ? <Empty title="Nothing shortlisted yet." body="Swipe right on anything in the deck and it lands here, sorted by how sure you were." action="Deal ten" onAction={() => set({ route: 'mood' })} /> : (
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: 'var(--space-8)' }}>
+            {/* Guest → member: keep this shortlist across phones. Gentle, dismissible, never for members. */}
+            <ConvertNudge app={app} set={set} kind="shortlist" />
             {yes.length > 0 && <><SectionLabel>Strong yes</SectionLabel>{yes.map((f, i) => row(f, i, yes))}</>}
             {maybe.length > 0 && <><SectionLabel>Maybe</SectionLabel>{maybe.map((f, i) => row(f, i, maybe))}</>}
             <Body tone="tertiary" style={{ font: 'var(--type-caption)', marginTop: 'var(--space-6)' }}>Watch now opens the film in the streaming app. Tomorrow we'll ask how it went.</Body>
           </div>
         )}
-      {app.watchNowTapped && <div style={{ position: 'absolute', left: 'var(--page-inset)', right: 'var(--page-inset)', bottom: 'calc(var(--safe-bottom) + 12px)', display: 'flex', alignItems: 'center', gap: 12, minHeight: 52, padding: '0 18px', borderRadius: 'var(--radius-full)', background: 'var(--color-ink)', color: 'var(--color-ink-inverse)', boxShadow: 'var(--elevation-toast)', font: 'var(--type-body)' }}>Opening {D.films.find(f => f.id === app.pendingFollowUp).service}…<button type="button" onClick={() => set({ route: 'followup', watchNowTapped: false })} style={{ marginLeft: 'auto', appearance: 'none', border: 0, background: 'transparent', color: 'inherit', font: 'var(--type-label)', textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer', height: 40 }}>Skip to tomorrow</button></div>}
+      <Toast open={!!offToast} message={offToast ? `You’re offline — can’t open ${offToast.title} on ${offToast.service} right now` : ''} actionLabel="Retry" onAction={() => { setOffToast(null); if (!app.offline) watch(offToast); }} style={{ bottom: 'calc(var(--safe-bottom) + 62px)' }} />
+      {app.watchNowTapped && <div style={{ position: 'absolute', left: 'var(--page-inset)', right: 'var(--page-inset)', bottom: 'calc(var(--safe-bottom) + 62px)', display: 'flex', alignItems: 'center', gap: 12, minHeight: 52, padding: '0 18px', borderRadius: 'var(--radius-full)', background: 'var(--color-ink)', color: 'var(--color-ink-inverse)', boxShadow: 'var(--elevation-toast)', font: 'var(--type-body)' }}>Opening {D.films.find(f => f.id === app.pendingFollowUp).service}…<button type="button" onClick={() => set({ route: 'followup', watchNowTapped: false })} style={{ marginLeft: 'auto', appearance: 'none', border: 0, background: 'transparent', color: 'inherit', font: 'var(--type-label)', textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer', height: 40 }}>Skip to tomorrow</button></div>}
     </Screen>
   );
 }

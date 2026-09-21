@@ -6,6 +6,7 @@ import { Blend, Body, Headline, Screen, TopRow } from "../primitives";
 import { Button, IconButton } from "../controls";
 import { ListRow, SectionLabel } from "../surfaces";
 import { Poster } from "../poster";
+import { ConvertNudge } from "./ConvertNudge";
 import { useTheme } from "../tokens";
 import type { MoodHue } from "../tokens";
 import type { Film } from "../../films";
@@ -16,7 +17,10 @@ const tintFor = (id: string) => TINTS[[...id].reduce((a, c) => a + c.charCodeAt(
 const subtitleOf = (f: Film) =>
   `${serviceLabel(f.service)} · ${formatRuntime(f.runtimeMin)}${f.leavingInDays ? ` · leaves in ${f.leavingInDays} days` : ""}`;
 
-export function ShortlistScreen({ films, onRemove, onWatch }: { films: Film[]; onRemove: (id: string) => void; onWatch: (f: Film) => void }) {
+export function ShortlistScreen({ films, onRemove, onWatch, showNudge = false, onNudgeSignIn, onNudgeDismiss }: {
+  films: Film[]; onRemove: (id: string) => void; onWatch: (f: Film) => void;
+  showNudge?: boolean; onNudgeSignIn?: () => void; onNudgeDismiss?: () => void;
+}) {
   const t = useTheme();
   const [opening, setOpening] = useState<Film | null>(null);
   const empty = films.length === 0;
@@ -51,6 +55,7 @@ export function ShortlistScreen({ films, onRemove, onWatch }: { films: Film[]; o
         </View>
       ) : (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: t.space[8] }} showsVerticalScrollIndicator={false}>
+          <ConvertNudge kind="shortlist" visible={showNudge} onSignIn={onNudgeSignIn ?? (() => {})} onDismiss={onNudgeDismiss ?? (() => {})} />
           <SectionLabel>Strong yes</SectionLabel>
           {films.map((f, i) => row(f, i, films))}
           <Body tone="tertiary" style={[t.type.caption, { marginTop: t.space[6] }]}>Watch now opens the film in the streaming app. Tomorrow we’ll ask how it went.</Body>
