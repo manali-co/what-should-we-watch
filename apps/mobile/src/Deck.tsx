@@ -3,7 +3,7 @@ import {
   Animated, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions,
 } from "react-native";
 import { Film } from "./films";
-import { theme } from "./theme";
+import { font, theme } from "./theme";
 
 type Decision = "dislike" | "like" | "maybe" | "watched";
 const SWIPE = 110;
@@ -95,7 +95,7 @@ export function Deck({ films, onDone }: { films: Film[]; onDone: (kept: Film[]) 
           <Text style={[styles.actText, { color: theme.no }]}>Pass</Text>
         </Pressable>
         <Pressable style={[styles.act, styles.actYes]} onPress={() => fling("like", { x: 900, y: 0 })}>
-          <Text style={[styles.actText, { color: "#14151A" }]}>Like</Text>
+          <Text style={[styles.actText, { color: "#16171D" }]}>Like</Text>
         </Pressable>
         <Pressable style={[styles.act, { borderColor: theme.moodHues[1] }]} onPress={() => fling("maybe", { x: 0, y: -900 })}>
           <Text style={[styles.actText, { color: theme.moodHues[1] }]}>Maybe</Text>
@@ -128,11 +128,11 @@ const styles = StyleSheet.create({
     padding: 22, justifyContent: "flex-start", overflow: "hidden",
   },
   under: { transform: [{ scale: 0.94 }, { translateY: 16 }], opacity: 0.5 },
-  wild: { alignSelf: "flex-start", color: "#14151A", borderColor: "#14151A", borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2, fontSize: 12, marginBottom: 8, opacity: 0.8 },
-  title: { fontSize: 34, fontWeight: "800", color: "#14151A", letterSpacing: -1, lineHeight: 36 },
-  meta: { fontSize: 15, color: "#14151A", opacity: 0.8, marginTop: 8 },
-  why: { fontSize: 17, color: "#14151A", lineHeight: 23 },
-  svc: { fontSize: 14, color: "#14151A", opacity: 0.85, marginTop: 12 },
+  wild: { alignSelf: "flex-start", color: "#16171D", borderColor: "#16171D", borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2, fontSize: 12, marginBottom: 8, opacity: 0.8 },
+  title: { fontFamily: font.display, fontSize: 34, color: "#16171D", letterSpacing: -1.2, lineHeight: 36 },
+  meta: { fontFamily: font.bodyMed, fontSize: 15, color: "#16171D", opacity: 0.8, marginTop: 8 },
+  why: { fontFamily: font.body, fontSize: 17, color: "#16171D", lineHeight: 23 },
+  svc: { fontFamily: font.body, fontSize: 14, color: "#16171D", opacity: 0.85, marginTop: 12 },
   stamp: { position: "absolute", top: 22, fontSize: 26, fontWeight: "900", borderWidth: 3, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 2 },
   stampYes: { right: 22, color: theme.yes, borderColor: theme.yes, transform: [{ rotate: "12deg" }] },
   stampNo: { left: 22, color: theme.no, borderColor: theme.no, transform: [{ rotate: "-12deg" }] },
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", gap: 10, marginTop: 4 },
   act: { flex: 1, borderWidth: 1.5, borderRadius: 999, paddingVertical: 15, alignItems: "center" },
   actYes: { backgroundColor: theme.ink, borderColor: theme.ink, flex: 1.3 },
-  actText: { fontSize: 16, fontWeight: "700" },
+  actText: { fontFamily: font.bodySemi, fontSize: 16 },
   hint: { color: theme.muted, fontSize: 12, textAlign: "center", marginTop: 10 },
   sheet: { position: "absolute", left: 22, right: 22, bottom: 24, backgroundColor: theme.surface, borderRadius: 20, padding: 18, borderWidth: 1, borderColor: theme.line },
   sheetTitle: { color: theme.ink, fontSize: 16, fontWeight: "600", marginBottom: 12 },
