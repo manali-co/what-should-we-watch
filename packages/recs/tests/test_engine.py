@@ -1,4 +1,4 @@
-from wsww_recs.engine import RecsEngine, build_prompt
+from wsww_recs.engine import DeckRequest, Moment, RecsEngine, build_prompt
 
 
 class FakeContainer:
@@ -16,7 +16,9 @@ class FakeEmbedder:
 class FakeRanker:
     def __init__(self, out):
         self._out = out
+        self.last_prompt = None
     def rank(self, prompt):
+        self.last_prompt = prompt
         return self._out
 
 
@@ -30,32 +32,36 @@ ROWS = [
 ]
 
 
-def test_prompt_lists_candidates_by_index():
-    p = build_prompt(["cozy"], [{"title": "A", "year": 2020, "genres": ["Drama"], "_service": "netflix", "overview": "x"}], 10)
-    assert "0. A (2020)" in p
-    assert "cozy" in p
+def test_prompt_includes_moment_taste_and_history():
+    req = DeckRequest(country="us", services=[], moods=["cozy"],
+                      moment=Moment(daypart="evening", weekday="Friday", is_weekend=True, season="autumn", holiday="Halloween run-up"),
+                      taste_notes="Loves slow dramas.",
+                      recent_decisions=[{"action": "like", "title": "Past Film", "reaction": "loved", "moods": ["cozy"]}])
+    p = build_prompt(req, [{"title": "A", "year": 2020, "genres": ["Drama"], "_service": "netflix", "overview": "x"}])
+    assert "evening on Friday (weekend), autumn, Halloween run-up" in p
+    assert "Loves slow dramas." in p
+    assert "like: Past Film (they said loved)" in p
 
 
-def test_deck_maps_llm_picks_to_cards():
-    eng = RecsEngine(FakeContainer(ROWS), FakeEmbedder(),
-                     FakeRanker('{"picks":[{"index":1,"why":"You wanted funny","wildcard":true}]}'))
-    cards = eng.deck("us", [], ["big laughs"], limit=10)
-    assert len(cards) == 1
-    assert cards[0]["title"] == "B"
-    assert cards[0]["why"] == "You wanted funny"
-    assert cards[0]["wildcard"] is True
-    assert cards[0]["posterUrl"] == "http://p/b.jpg"
+def test_deck_maps_picks_and_returns_taste_notes():
+    ranker = FakeRanker('{"picks":[{"index":1,"why":"You wanted funny","wildcard":true}],"taste_notes":"Likes comedy."}')
+    eng = RecsEngine(FakeContainer(ROWS), FakeEmbedder(), ranker)
+    res = eng.deck(DeckRequest(country="us", services=[], moods=["big laughs"], limit=10))
+    assert len(res.films) == 1
+    assert res.films[0]["title"] == "B"
+    assert res.films[0]["wildcard"] is True
+    assert res.taste_notes == "Likes comedy."
 
 
 def test_deck_filters_by_service():
-    eng = RecsEngine(FakeContainer(ROWS), FakeEmbedder(),
-                     FakeRanker('{"picks":[{"index":0,"why":"w"},{"index":1,"why":"w"}]}'))
-    cards = eng.deck("us", ["netflix"], ["cozy"], limit=10)
-    # only A is on netflix; index mapping is over the filtered candidate list
-    assert [c["title"] for c in cards] == ["A"]
+    ranker = FakeRanker('{"picks":[{"index":0,"why":"w"}],"taste_notes":"n"}')
+    eng = RecsEngine(FakeContainer(ROWS), FakeEmbedder(), ranker)
+    res = eng.deck(DeckRequest(country="us", services=["netflix"], moods=["cozy"], limit=10))
+    assert [c["title"] for c in res.films] == ["A"]
 
 
-def test_garbled_llm_falls_back_to_candidates():
-    eng = RecsEngine(FakeContainer(ROWS), FakeEmbedder(), FakeRanker("not json at all"))
-    cards = eng.deck("us", [], ["cozy"], limit=10)
-    assert len(cards) == 2  # falls back to the vector candidates
+def test_garbled_llm_falls_back_and_keeps_old_notes():
+    eng = RecsEngine(FakeContainer(ROWS), FakeEmbedder(), FakeRanker("not json"))
+    res = eng.deck(DeckRequest(country="us", services=[], moods=["cozy"], taste_notes="old notes"))
+    assert len(res.films) == 2
+    assert res.taste_notes == "old notes"
