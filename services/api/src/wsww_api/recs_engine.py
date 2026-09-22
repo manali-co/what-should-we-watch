@@ -60,6 +60,32 @@ class DeckResult:
     taste_notes: str        # possibly-updated running notes to persist
 
 
+@dataclass
+class Participant:
+    """One person in a group session: their durable taste and tonight's votes."""
+    name: str
+    taste_notes: str = ""
+    votes: dict[str, str] = field(default_factory=dict)  # filmId -> like | maybe | pass
+
+
+@dataclass
+class ShortlistRequest:
+    """Rank the films a viewer (or a room) kept, into a decision for tonight."""
+    kept: list[dict[str, Any]]              # each: {id, title, year, runtimeMin, service, action?, why?}
+    moods: list[str] = field(default_factory=list)
+    moment: Moment = field(default_factory=Moment)
+    company: str = ""
+    length: str = ""
+    taste_notes: str = ""                    # solo viewer's running notes
+    participants: list[Participant] = field(default_factory=list)  # non-empty => group
+
+
+@dataclass
+class ShortlistResult:
+    films: list[dict[str, Any]]   # the kept films, reordered best-first, each with a fresh fit "why"
+    verdict: str                  # one confident line naming the #1 as tonight's call
+
+
 def _leaving_in_days(expires_on: Any) -> int | None:
     if not expires_on:
         return None
@@ -84,18 +110,21 @@ def _decisions_block(decisions: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def _moment_str(m: Moment) -> str:
+    return (
+        f"{m.daypart or 'unknown time'} on {m.weekday or 'a day'}"
+        f"{' (weekend)' if m.is_weekend else ''}, {m.season or 'no season'}"
+        f"{', ' + m.holiday if m.holiday else ''}"
+    )
+
+
 def build_prompt(req: DeckRequest, candidates: list[dict[str, Any]]) -> str:
     lines = [
         f"{i}. {c['title']} ({c.get('year')}) — {', '.join(c.get('genres') or [])} — "
         f"on {c.get('_service')} — {(c.get('overview') or '')[:220]}"
         for i, c in enumerate(candidates)
     ]
-    m = req.moment
-    moment = (
-        f"{m.daypart or 'unknown time'} on {m.weekday or 'a day'}"
-        f"{' (weekend)' if m.is_weekend else ''}, {m.season or 'no season'}"
-        f"{', ' + m.holiday if m.holiday else ''}"
-    )
+    moment = _moment_str(req.moment)
     return f"""You are the taste engine inside one person's movie-night app. Choose and rank the {req.limit} best films for THIS viewer, right now. Think about what separates their 'like' from their 'pass'.
 
 RIGHT NOW: {moment}. Watching: {req.company or 'unspecified'}. Time they have: {req.length or 'any'}.
@@ -118,6 +147,63 @@ Rules:
 
 Reply with ONLY this JSON:
 {{"picks":[{{"index":0,"why":"...","wildcard":false}}],"taste_notes":"..."}}"""
+
+
+_SHORTLIST_JSON = (
+    '\n\nReply with ONLY this JSON:\n'
+    '{"order":["id1","id2"],"picks":[{"id":"id1","why":"..."}],"verdict":"..."}'
+)
+
+
+def build_shortlist_prompt(req: ShortlistRequest) -> str:
+    """Rank the kept films into a decision. Solo unless participants are given,
+    in which case rank for group satisfaction (maximise the floor)."""
+    films = [
+        f"- {f['id']}: {f['title']} ({f.get('year')}) — {f.get('runtimeMin')} min on {f.get('service')}"
+        + (f" — swiped {f['action']}" if f.get("action") else "")
+        for f in req.kept
+    ]
+    moment = _moment_str(req.moment)
+
+    if req.participants:
+        who = "\n".join(
+            f"{p.name}:\n  taste: {p.taste_notes or '(early data)'}\n  votes tonight: "
+            + (", ".join(f"{fid}={v}" for fid, v in p.votes.items()) or "(didn't vote)")
+            for p in req.participants
+        )
+        return f"""You are the taste engine settling what a GROUP watches together tonight. Rank their shared shortlist so the TOP pick satisfies EVERYONE — maximise the floor (nobody stuck with something they'd hate), not just the average. A film several people liked and nobody passed hard on beats a film one person loved and another disliked.
+
+RIGHT NOW: {moment}. A group of {len(req.participants)}.
+MOODS IN THE BLEND: {', '.join(req.moods) or 'open to anything'}
+
+THE PEOPLE (durable taste + how they voted tonight):
+{who}
+
+THE SHORTLIST (films the room kept):
+{chr(10).join(films)}
+
+Rules:
+- "order": every shortlist id, best-for-the-group first.
+- "picks": for EACH id a "why" of at most 22 words. For the #1, name how it works across the different people (e.g. "cosy enough for Jo, strange enough for Sam, short enough for Ana").
+- "verdict": one confident line naming the #1 as the group's watch tonight, at most 22 words.
+- Use only ids from the shortlist; never invent a film.{_SHORTLIST_JSON}"""
+
+    return f"""You are the taste engine calling what ONE viewer should watch tonight, from the films they kept. Rank so #1 is the single best call for THIS viewer, right now — the strongest fit of their taste, tonight's mood, and the moment. Break ties toward what leaves the service soonest and toward what their history says they'd actually finish.
+
+RIGHT NOW: {moment}. Watching: {req.company or 'solo'}. Time they have: {req.length or 'any'}.
+MOODS TONIGHT: {', '.join(req.moods) or 'open to anything'}
+
+YOUR RUNNING NOTES ON THIS VIEWER:
+{req.taste_notes or '(early data)'}
+
+THE SHORTLIST (films they kept, with how they swiped):
+{chr(10).join(films)}
+
+Rules:
+- "order": every shortlist id, best-first.
+- "picks": for EACH id a "why" of at most 22 words, second person, tied to their taste, the mood, or the moment. No generic praise, no spoilers.
+- "verdict": one confident line — the title and the reason it's tonight's one — at most 22 words.
+- Use only ids from the shortlist; never invent a film.{_SHORTLIST_JSON}"""
 
 
 class RecsEngine:
@@ -184,6 +270,33 @@ class RecsEngine:
             cards = [self._card(c, (c.get("overview") or "")[:150], False) for c in candidates[: req.limit]]
         notes = (data.get("taste_notes") if isinstance(data, dict) else "") or req.taste_notes
         return DeckResult(films=cards, taste_notes=str(notes)[:1200])
+
+    def rank_shortlist(self, req: ShortlistRequest) -> ShortlistResult:
+        """Order the kept films into tonight's decision, with a fresh fit 'why' per
+        film and a headline verdict. Group-aware when participants are supplied.
+        Never drops a kept film; on an unusable ranking, keeps the original order."""
+        if not req.kept:
+            return ShortlistResult(films=[], verdict="")
+        data = _parse(self._rank.rank(build_shortlist_prompt(req)))
+        order = data.get("order") if isinstance(data, dict) else None
+        whys = (
+            {p.get("id"): p.get("why") for p in (data.get("picks") or []) if isinstance(p, dict)}
+            if isinstance(data, dict)
+            else {}
+        )
+        by_id = {f["id"]: f for f in req.kept}
+        films: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for fid in order or []:
+            f = by_id.get(fid)
+            if f is not None and fid not in seen:
+                films.append({**f, "why": whys.get(fid) or f.get("why", "")})
+                seen.add(fid)
+        for f in req.kept:  # any film the model omitted keeps its place at the end
+            if f["id"] not in seen:
+                films.append(f)
+        verdict = str(data.get("verdict", "")) if isinstance(data, dict) else ""
+        return ShortlistResult(films=films, verdict=verdict[:200])
 
 
 def _parse(raw: str) -> dict[str, Any]:
