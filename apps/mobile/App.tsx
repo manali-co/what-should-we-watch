@@ -8,7 +8,7 @@ import { ClerkProvider, useAuth, useBiometricCredentials, useUser } from "@clerk
 import { tokenCache } from "@clerk/expo/token-cache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-import { Alert, Linking, Platform, Pressable, Share, StatusBar, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Platform, Pressable, Share, StatusBar, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { setAuthTokenGetter } from "./src/api";
 import { publishableKey } from "./src/clerk";
@@ -37,21 +37,34 @@ const cleanNudges = (v: unknown): Record<string, boolean> =>
     ? Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([, b]) => typeof b === "boolean")) as Record<string, boolean>
     : {};
 
+export type ThemePref = "system" | "dark" | "light";
+const THEME_KEY = "wsww:theme";
+
 export default function App() {
   const [loaded] = useFonts({
     BricolageGrotesque_800ExtraBold, BricolageGrotesque_600SemiBold,
     Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold,
   });
+  // Appearance: "system" follows the OS; "dark"/"light" force it. Persisted, applied live.
+  const [themePref, setThemePref] = useState<ThemePref>("dark");
+  useEffect(() => {
+    AsyncStorage.getItem(THEME_KEY).then((v) => {
+      if (v === "system" || v === "dark" || v === "light") setThemePref(v);
+    }).catch(() => {});
+  }, []);
+  const setTheme = (p: ThemePref) => { setThemePref(p); AsyncStorage.setItem(THEME_KEY, p).catch(() => {}); };
+  const system = useColorScheme();
+  const themeName = themePref === "system" ? (system === "light" ? "light" : "dark") : themePref;
   if (!loaded)
     return <View style={[styles.root, styles.center]}><Text style={styles.loadingText}>…</Text></View>;
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <SafeAreaProvider><ThemeProvider name="dark"><Root /></ThemeProvider></SafeAreaProvider>
+      <SafeAreaProvider><ThemeProvider name={themeName}><Root themePref={themePref} onThemePref={setTheme} /></ThemeProvider></SafeAreaProvider>
     </ClerkProvider>
   );
 }
 
-function Root() {
+function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (p: ThemePref) => void }) {
   const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
   const { user } = useUser();
   const userInitial = (user?.firstName?.[0] ?? user?.username?.[0] ?? user?.primaryEmailAddress?.emailAddress?.[0] ?? "").toUpperCase();
@@ -254,6 +267,8 @@ function Root() {
                 onGate={setGate}
                 onExport={doExport}
                 onLogout={logout}
+                themePref={themePref}
+                onThemePref={onThemePref}
                 provider={provider}
                 email={email}
                 displayName={displayName || user?.firstName || undefined}
