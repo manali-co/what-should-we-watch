@@ -57,10 +57,12 @@ def _build_recs(settings: Settings) -> object | None:
     from .recs_engine import RecsEngine
 
     client = build_openai_client(settings.openai_endpoint)
+    group_deployment = settings.group_ranking_deployment or settings.ranking_deployment
     return RecsEngine(
         get_raw_container("catalog"),
         AzureEmbedder(client, settings.embedding_deployment),
         AzureRanker(client, settings.ranking_deployment),
+        AzureRanker(client, group_deployment),
     )
 
 

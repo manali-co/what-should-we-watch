@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     openai_endpoint: str = ""
     embedding_deployment: str = "text-embedding-3-large"
     ranking_deployment: str = "gpt-5.4-mini"
+    # Stronger model for group ranking + taste consolidation; empty => reuse ranking_deployment.
+    group_ranking_deployment: str = ""
     clerk_issuer: str = ""
 
 
