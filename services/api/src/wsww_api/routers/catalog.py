@@ -95,12 +95,16 @@ async def taste(request: Request) -> dict[str, object]:
     tallies. Empty everything for a brand-new (or guest, no device) viewer, so the
     UI shows a truthful cold-start rather than invented patterns."""
     empty = {"total": 0, "actions": {"like": 0, "maybe": 0, "dislike": 0, "watched": 0},
-             "reactions": {"loved": 0, "okay": 0, "disliked": 0}, "topMoods": []}
+             "reactions": {"loved": 0, "okay": 0, "disliked": 0}, "topMoods": [], "patterns": []}
     deps = deps_of(request)
     device = _identity(request)
     if not device:
         return {"notes": "", **empty}
-    return {"notes": deps.taste.get_notes(device), **deps.decisions.stats(device)}
+    return {
+        "notes": deps.taste.get_notes(device),
+        **deps.decisions.stats(device),
+        "patterns": deps.decisions.patterns(device),
+    }
 
 
 @router.post("/catalog/results")

@@ -229,7 +229,7 @@ function Root() {
             )}
             {tab === "taste" && (
               <TasteScreen
-                decisions={decisions}
+                refreshKey={decisions}
                 showNudge={guest && !isSignedIn && !dismissedNudges.taste}
                 onNudgeSignIn={openSignIn}
                 onNudgeDismiss={() => dismissNudge("taste")}

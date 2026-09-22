@@ -11,6 +11,18 @@ async function mockApi(page: Page) {
   await page.route("**/v1/catalog/deck*", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ films: FILMS }) }));
   await page.route("**/v1/catalog/decisions*", (route) => route.fulfill({ status: 204, body: "" }));
+  // Intelligence endpoints: rank the kept shortlist (echo the posted order + a verdict) and
+  // return a cold-start taste profile, so tests never depend on the live engine.
+  await page.route("**/v1/catalog/results*", async (route) => {
+    const kept = (route.request().postDataJSON()?.kept ?? []) as { title: string }[];
+    const verdict = kept.length ? `Tonight, ${kept[0].title}.` : "";
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ films: kept, verdict }) });
+  });
+  await page.route("**/v1/catalog/taste*", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      notes: "", total: 0, actions: { like: 0, maybe: 0, dislike: 0, watched: 0 },
+      reactions: { loved: 0, okay: 0, disliked: 0 }, topMoods: [], patterns: [],
+    }) }));
 }
 
 async function enterAsGuest(page: Page) {
@@ -77,6 +89,15 @@ test.describe("guest flow (web)", () => {
     await page.getByTestId("tab-taste").click();
     await page.getByTestId("tab-settings").click();
     await expect(page.getByText("You’re a guest.")).toBeVisible();
+  });
+
+  test("taste shows an honest cold-start, not fabricated patterns", async ({ page }) => {
+    await enterAsGuest(page);
+    await completeOnboarding(page);
+    await page.getByTestId("tab-taste").click();
+    // A brand-new viewer must see the truthful empty state, never invented data.
+    await expect(page.getByText("We’re still learning your taste.")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("With Jo")).toHaveCount(0);
   });
 });
 
