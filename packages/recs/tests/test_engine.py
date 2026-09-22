@@ -107,6 +107,21 @@ def test_rank_shortlist_garbled_keeps_original_order():
     assert res.verdict == ""
 
 
+def test_group_shortlist_uses_the_group_ranker_solo_uses_the_deck_ranker():
+    solo = FakeRanker('{"order":["a"],"picks":[{"id":"a","why":"x"}],"verdict":"solo"}')
+    group = FakeRanker('{"order":["a"],"picks":[{"id":"a","why":"y"}],"verdict":"group"}')
+    eng = RecsEngine(FakeContainer([]), FakeEmbedder(), solo, group)
+    assert eng.rank_shortlist(ShortlistRequest(kept=KEPT)).verdict == "solo"
+    grouped = eng.rank_shortlist(ShortlistRequest(kept=KEPT, participants=[Participant(name="Jo")]))
+    assert grouped.verdict == "group"
+
+
+def test_group_ranker_defaults_to_deck_ranker_when_unset():
+    solo = FakeRanker('{"order":["a"],"picks":[{"id":"a","why":"x"}],"verdict":"only"}')
+    eng = RecsEngine(FakeContainer([]), FakeEmbedder(), solo)  # no group_ranker
+    assert eng.rank_shortlist(ShortlistRequest(kept=KEPT, participants=[Participant(name="Jo")])).verdict == "only"
+
+
 def test_rank_shortlist_empty():
     eng = RecsEngine(FakeContainer([]), FakeEmbedder(), FakeRanker("{}"))
     res = eng.rank_shortlist(ShortlistRequest(kept=[]))

@@ -207,10 +207,13 @@ Rules:
 
 
 class RecsEngine:
-    def __init__(self, container: Container, embedder: Embedder, ranker: Ranker) -> None:
+    def __init__(self, container: Container, embedder: Embedder, ranker: Ranker, group_ranker: Ranker | None = None) -> None:
         self._c = container
         self._embed = embedder
         self._rank = ranker
+        # Group ranking (balancing N tastes to maximise the floor) is harder than a solo
+        # pick, so it can use a stronger model. Falls back to the deck ranker when unset.
+        self._group_rank = group_ranker or ranker
 
     def _candidates(self, country: str, services: list[str], vector: list[float], k: int) -> list[dict[str, Any]]:
         rows = list(
@@ -277,7 +280,8 @@ class RecsEngine:
         Never drops a kept film; on an unusable ranking, keeps the original order."""
         if not req.kept:
             return ShortlistResult(films=[], verdict="")
-        data = _parse(self._rank.rank(build_shortlist_prompt(req)))
+        ranker = self._group_rank if req.participants else self._rank
+        data = _parse(ranker.rank(build_shortlist_prompt(req)))
         order = data.get("order") if isinstance(data, dict) else None
         whys = (
             {p.get("id"): p.get("why") for p in (data.get("picks") or []) if isinstance(p, dict)}
