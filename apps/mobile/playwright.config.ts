@@ -18,7 +18,7 @@ export default defineConfig({
     viewport: { width: 390, height: 844 }, // phone-first
     trace: "on-first-retry",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 390, height: 844 } } }],
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true } }],
   webServer: {
     // Build the web bundle, then serve it statically. Reused locally if already running.
     command: "npx expo export --platform web --output-dir dist && npx http-server dist -p 8099 -s -c-1",
