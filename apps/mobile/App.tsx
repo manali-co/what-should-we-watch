@@ -29,6 +29,14 @@ import { GateSheet, GateFeature } from "./src/design/screens/GateSheet";
 type Tab = "tonight" | "shortlist" | "taste" | "settings";
 const STORE = "wsww:v1";
 
+// Persisted JSON is untrusted: a corrupted or wrong-shaped `dismissedNudges` (a string,
+// array, null…) must not slip through `?? {}` and make `.taste`/`.shortlist` reads undefined,
+// which would resurface an already-dismissed nudge. Accept only a plain record of booleans.
+const cleanNudges = (v: unknown): Record<string, boolean> =>
+  v && typeof v === "object" && !Array.isArray(v)
+    ? Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([, b]) => typeof b === "boolean")) as Record<string, boolean>
+    : {};
+
 export default function App() {
   const [loaded] = useFonts({
     BricolageGrotesque_800ExtraBold, BricolageGrotesque_600SemiBold,
@@ -83,7 +91,7 @@ function Root() {
   useEffect(() => {
     AsyncStorage.getItem(STORE).then((raw) => {
       if (raw) {
-        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); setGuest(!!s.guest); setDismissedNudges(s.dismissedNudges ?? {}); setShortlist(s.shortlist ?? []); setDecisions(s.decisions ?? 0); setSeenIds(s.seenIds ?? []); } catch {}
+        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); setGuest(!!s.guest); setDismissedNudges(cleanNudges(s.dismissedNudges)); setShortlist(s.shortlist ?? []); setDecisions(s.decisions ?? 0); setSeenIds(s.seenIds ?? []); } catch {}
       }
       setReady(true);
     });
