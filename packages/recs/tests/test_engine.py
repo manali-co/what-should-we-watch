@@ -1,4 +1,12 @@
-from wsww_recs.engine import DeckRequest, Moment, RecsEngine, build_prompt
+from wsww_recs.engine import (
+    DeckRequest,
+    Moment,
+    Participant,
+    RecsEngine,
+    ShortlistRequest,
+    build_prompt,
+    build_shortlist_prompt,
+)
 
 
 class FakeContainer:
@@ -65,3 +73,65 @@ def test_garbled_llm_falls_back_and_keeps_old_notes():
     res = eng.deck(DeckRequest(country="us", services=[], moods=["cozy"], taste_notes="old notes"))
     assert len(res.films) == 2
     assert res.taste_notes == "old notes"
+
+
+KEPT = [
+    {"id": "a", "title": "A", "year": 2020, "runtimeMin": 100, "service": "netflix", "action": "like"},
+    {"id": "b", "title": "B", "year": 2021, "runtimeMin": 110, "service": "hulu", "action": "maybe"},
+]
+
+
+def test_rank_shortlist_reorders_fills_why_and_verdict():
+    ranker = FakeRanker(
+        '{"order":["b","a"],"picks":[{"id":"b","why":"Your Friday comedy"},'
+        '{"id":"a","why":"Slower, for after"}],"verdict":"Tonight, B."}'
+    )
+    eng = RecsEngine(FakeContainer([]), FakeEmbedder(), ranker)
+    res = eng.rank_shortlist(ShortlistRequest(kept=KEPT, moods=["big laughs"]))
+    assert [f["id"] for f in res.films] == ["b", "a"]
+    assert res.films[0]["why"] == "Your Friday comedy"
+    assert res.verdict == "Tonight, B."
+
+
+def test_rank_shortlist_appends_films_the_model_dropped():
+    ranker = FakeRanker('{"order":["b"],"picks":[{"id":"b","why":"w"}],"verdict":"v"}')
+    eng = RecsEngine(FakeContainer([]), FakeEmbedder(), ranker)
+    res = eng.rank_shortlist(ShortlistRequest(kept=KEPT))
+    assert [f["id"] for f in res.films] == ["b", "a"]  # 'a' kept, appended at the end
+
+
+def test_rank_shortlist_garbled_keeps_original_order():
+    eng = RecsEngine(FakeContainer([]), FakeEmbedder(), FakeRanker("not json"))
+    res = eng.rank_shortlist(ShortlistRequest(kept=KEPT))
+    assert [f["id"] for f in res.films] == ["a", "b"]
+    assert res.verdict == ""
+
+
+def test_rank_shortlist_empty():
+    eng = RecsEngine(FakeContainer([]), FakeEmbedder(), FakeRanker("{}"))
+    res = eng.rank_shortlist(ShortlistRequest(kept=[]))
+    assert res.films == [] and res.verdict == ""
+
+
+def test_group_shortlist_prompt_includes_people_votes_and_floor_rule():
+    req = ShortlistRequest(
+        kept=KEPT,
+        participants=[
+            Participant(name="Jo", taste_notes="Loves cosy.", votes={"a": "like", "b": "pass"}),
+            Participant(name="Sam", taste_notes="Likes strange.", votes={"a": "maybe", "b": "like"}),
+        ],
+    )
+    p = build_shortlist_prompt(req)
+    assert "GROUP" in p and "maximise the floor" in p
+    assert "Jo:" in p and "a=like" in p and "b=pass" in p
+    assert "A group of 2" in p
+
+
+def test_solo_shortlist_prompt_uses_taste_and_moment():
+    req = ShortlistRequest(
+        kept=KEPT, moods=["cozy"], taste_notes="Loves slow dramas.",
+        moment=Moment(daypart="evening", weekday="Friday", is_weekend=True, season="autumn"),
+    )
+    p = build_shortlist_prompt(req)
+    assert "ONE viewer" in p and "Loves slow dramas." in p
+    assert "evening on Friday (weekend), autumn" in p
