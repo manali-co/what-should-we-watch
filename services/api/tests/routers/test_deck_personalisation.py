@@ -42,3 +42,25 @@ def test_stats_are_real_counts_not_mocked():
     assert s["actions"]["like"] == 2 and s["actions"]["dislike"] == 1
     assert s["reactions"]["loved"] == 1
     assert s["topMoods"][0] == "cozy"
+
+
+def test_patterns_are_derived_from_moments_not_invented():
+    repo = DecisionsRepo(InMemoryContainer())
+    assert repo.patterns("nobody") == []  # cold start invents nothing
+    late = {"daypart": "late night", "isWeekend": False, "season": "winter"}
+    for i in range(3):
+        repo.add("u", {"action": "like", "title": f"Film{i}",
+                       "moods": ["mind-bender"], "moment": late})
+    repo.add("u", {"action": "dislike", "moods": ["cozy"], "moment": late})  # negatives ignored
+    pats = repo.patterns("u")
+    late_nights = next(p for p in pats if p["signal"] == "Late nights")
+    assert late_nights["moods"] == ["mind-bender"]
+    assert late_nights["count"] == 3
+    assert late_nights["sampleTitle"] == "Film0"
+
+
+def test_patterns_need_enough_support():
+    repo = DecisionsRepo(InMemoryContainer())
+    repo.add("u", {"action": "like", "moods": ["cozy"],
+                   "moment": {"daypart": "evening", "isWeekend": True, "season": "summer"}})
+    assert repo.patterns("u") == []  # a single like is not a pattern

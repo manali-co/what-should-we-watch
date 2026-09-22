@@ -84,12 +84,67 @@ export async function fetchDeck(opts: {
   }
 }
 
+// The moment shape the backend stores on a decision / reads for ranking (camelCase).
+function momentPayload() {
+  const mo = moment();
+  return { daypart: mo.daypart, weekday: mo.weekday, isWeekend: mo.is_weekend, season: mo.season };
+}
+
 export async function recordDecision(d: {
   titleId: string; title: string; action: "like" | "dislike" | "maybe" | "watched";
   reaction?: "loved" | "okay" | "disliked"; moods: string[];
 }): Promise<void> {
   const headers = { "Content-Type": "application/json", ...(await authHeaders()) };
   fetch(`${API_BASE}/v1/catalog/decisions`, {
-    method: "POST", headers, body: JSON.stringify(d),
+    // Send the moment too, so the engine can learn what they say yes to late at
+    // night, on weekends, in winter… (behavioural patterns, not fabricated ones).
+    method: "POST", headers, body: JSON.stringify({ ...d, moment: momentPayload() }),
   }).catch(() => {}); // fire-and-forget; a lost decision is not worth blocking the swipe
+}
+
+// A group participant's contribution to the ranking: their durable taste and tonight's votes.
+export type Participant = { name: string; tasteNotes?: string; votes?: Record<string, string> };
+
+export type RankedResult = { films: Film[]; verdict: string };
+
+// After the deck: rank what was kept into tonight's decision. Solo unless
+// `participants` are supplied (a group session), where it ranks for the room.
+export async function fetchResults(opts: {
+  kept: Film[]; moods: string[]; company?: string; length?: string; participants?: Participant[];
+}): Promise<RankedResult> {
+  const body = {
+    kept: opts.kept, moods: opts.moods, company: opts.company ?? "", length: opts.length ?? "",
+    moment: momentPayload(), participants: opts.participants ?? [],
+  };
+  const headers = { "Content-Type": "application/json", ...(await authHeaders()) };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const r = await fetch(`${API_BASE}/v1/catalog/results`, {
+      method: "POST", headers, body: JSON.stringify(body), signal: ctrl.signal,
+    });
+    if (!r.ok) throw new Error(`results ${r.status}`);
+    return (await r.json()) as RankedResult;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export type TastePattern = { signal: string; moods: string[]; sampleTitle: string; count: number };
+
+export type TasteProfile = {
+  notes: string;
+  total: number;
+  actions: { like: number; maybe: number; dislike: number; watched: number };
+  reactions: { loved: number; okay: number; disliked: number };
+  topMoods: string[];
+  patterns: TastePattern[];
+};
+
+// The viewer's real taste: the engine's running notes + honest tallies. Cold-start
+// (a new or guest viewer) comes back all-zero, so the UI can be truthful, not invented.
+export async function fetchTaste(): Promise<TasteProfile> {
+  const r = await fetch(`${API_BASE}/v1/catalog/taste`, { headers: await authHeaders() });
+  if (!r.ok) throw new Error(`taste ${r.status}`);
+  return (await r.json()) as TasteProfile;
 }

@@ -25,6 +25,7 @@ export function TonightFlow({
 }) {
   const [phase, setPhase] = useState<Phase>("mood");
   const [moods, setMoods] = useState<string[]>([]);
+  const [company, setCompany] = useState("solo");
   const [films, setFilms] = useState<Film[]>([]);
   const [kept, setKept] = useState<Film[]>([]);
   const [pending, setPending] = useState(false);
@@ -44,6 +45,7 @@ export function TonightFlow({
 
   const deal = async (picked: string[], who: string) => {
     setMoods(picked);
+    setCompany(COMPANY[who] ?? "solo");
     setFilms([]);
     setFailed(false);
     setThinkingDone(false);
@@ -96,7 +98,7 @@ export function TonightFlow({
     return <ApiDown onRetry={() => deal(moods, "me")} onOpenShortlist={onOpenShortlist} />;
 
   if (phase === "end")
-    return <EndScreen kept={kept} onOpenShortlist={() => { onOpenShortlist(); setPhase("mood"); }} onAgain={() => setPhase("mood")} />;
+    return <EndScreen kept={kept} moods={moods} company={company} onOpenShortlist={() => { onOpenShortlist(); setPhase("mood"); }} onAgain={() => setPhase("mood")} />;
 
   return (
     <DeckScreen
