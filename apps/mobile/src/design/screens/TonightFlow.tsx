@@ -18,9 +18,9 @@ const COMPANY: Record<string, string> = { me: "solo", two: "couple", group: "fri
 type Phase = "mood" | "thinking" | "deck" | "end" | "empty" | "error";
 
 export function TonightFlow({
-  services, onKeep, onDecided, onOpenSettings, onOpenShortlist, firstTime, userInitial, userName, onTutorialSeen, country,
+  services, seenIds, onKeep, onDecided, onOpenSettings, onOpenShortlist, firstTime, userInitial, userName, onTutorialSeen, country,
 }: {
-  services: string[]; onKeep: (films: Film[]) => void; onDecided?: () => void; onOpenSettings: () => void;
+  services: string[]; seenIds?: string[]; onKeep: (films: Film[]) => void; onDecided?: (filmId: string) => void; onOpenSettings: () => void;
   onOpenShortlist: () => void; firstTime?: boolean; userInitial?: string; userName?: string; onTutorialSeen?: () => void; country?: string;
 }) {
   const [phase, setPhase] = useState<Phase>("mood");
@@ -44,7 +44,9 @@ export function TonightFlow({
     setPhase("thinking");
     try {
       const deck = await fetchDeck({ services, moods: picked, company: COMPANY[who] ?? "solo", country: countryCode(country) });
-      setFilms(deck);
+      // Never re-show a film already decided on (belt-and-braces over server-side exclusion).
+      const seen = new Set(seenIds ?? []);
+      setFilms(deck.filter((f) => !seen.has(f.id)));
     } catch {
       setFailed(true);
     } finally {
@@ -61,7 +63,7 @@ export function TonightFlow({
   }, [phase, thinkingDone, pending, failed, films, firstTime]);
 
   const onDecision = (film: Film, action: "like" | "dislike" | "maybe" | "watched", reaction?: "loved" | "okay" | "disliked") => {
-    onDecided?.();
+    onDecided?.(film.id);
     if (action === "like" || action === "maybe") onKeep([film]); // land in the shortlist immediately
     void recordDecision({ titleId: film.id, title: film.title, action, reaction, moods });
   };

@@ -61,6 +61,8 @@ function Root() {
   const [tab, setTab] = useState<Tab>("tonight");
   const [shortlist, setShortlist] = useState<Film[]>([]);
   const [decisions, setDecisions] = useState(0);
+  // Film ids already decided on, so a new deal never re-shows them (persisted, capped).
+  const [seenIds, setSeenIds] = useState<string[]>([]);
   // Guest mode: the full core loop works signed-out on this phone. Account-only
   // features (sync, group, account, export, delete) open a sign-in Gate instead.
   const [guest, setGuest] = useState(false);
@@ -79,11 +81,15 @@ function Root() {
   useEffect(() => {
     AsyncStorage.getItem(STORE).then((raw) => {
       if (raw) {
-        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); setGuest(!!s.guest); setDismissedNudges(s.dismissedNudges ?? {}); } catch {}
+        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); setGuest(!!s.guest); setDismissedNudges(s.dismissedNudges ?? {}); setShortlist(s.shortlist ?? []); setDecisions(s.decisions ?? 0); setSeenIds(s.seenIds ?? []); } catch {}
       }
       setReady(true);
     });
   }, []);
+
+  // Persist the shortlist / decisions / seen ids whenever they change (their setters don't
+  // call persist()), so a shortlist survives an app restart instead of vanishing.
+  useEffect(() => { if (ready) persist({}); }, [shortlist, decisions, seenIds, ready]);
 
   // After sign-in, offer to set up Face ID sign-in once — only if the device can enroll one.
   useEffect(() => {
@@ -109,8 +115,8 @@ function Root() {
   };
   const declineBio = () => { setBioAsked(true); setBioOffer(false); persist({ bioAsked: true }); };
 
-  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string; guest?: boolean; dismissedNudges?: Record<string, boolean> }) =>
-    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, guest, dismissedNudges, ...next })).catch(() => {});
+  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string; guest?: boolean; dismissedNudges?: Record<string, boolean>; shortlist?: Film[]; decisions?: number; seenIds?: string[] }) =>
+    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, guest, dismissedNudges, shortlist, decisions, seenIds, ...next })).catch(() => {});
   const finishOnboarding = (svcs: string[], countryName: string, name: string) => {
     setServices(svcs); setCountry(countryName); setDisplayName(name); setOnboarded(true);
     persist({ services: svcs, country: countryName, displayName: name, onboarded: true });
@@ -119,8 +125,11 @@ function Root() {
   const addToShortlist = (films: Film[]) => {
     setShortlist((prev) => { const ids = new Set(prev.map((f) => f.id)); return [...prev, ...films.filter((f) => !ids.has(f.id))]; });
   };
+  // Remember a decided film so a fresh deal excludes it (most-recent-first, capped at 400).
+  const markSeen = (id: string) => setSeenIds((prev) => (prev.includes(id) ? prev : [id, ...prev].slice(0, 400)));
+  const onDecided = (filmId: string) => { setDecisions((d) => d + 1); markSeen(filmId); };
   // "Reset what we've learned" — clears local decisions/taste only; never signs out.
-  const resetLearned = () => { setShortlist([]); setDecisions(0); };
+  const resetLearned = () => { setShortlist([]); setDecisions(0); setSeenIds([]); };
   const continueAsGuest = () => { setGuest(true); persist({ guest: true }); };
   const openSignIn = () => { setGate(null); setShowAccount(false); setSignInOverlay(true); };
   const dismissNudge = (kind: string) => { const next = { ...dismissedNudges, [kind]: true }; setDismissedNudges(next); persist({ dismissedNudges: next }); };
@@ -142,7 +151,7 @@ function Root() {
       return;
     }
     void signOut(); AsyncStorage.removeItem(STORE).catch(() => {});
-    setShowAccount(false); setGuest(false); setStarted(false); setServices([]); setOnboarded(false); setShortlist([]); setDecisions(0); setTab("tonight");
+    setShowAccount(false); setGuest(false); setStarted(false); setServices([]); setOnboarded(false); setShortlist([]); setDecisions(0); setSeenIds([]); setTab("tonight");
   };
   const logout = () => { void signOut(); setShowAccount(false); setStarted(false); setTab("tonight"); };
 
@@ -194,8 +203,9 @@ function Root() {
             {tab === "tonight" && (
               <TonightFlow
                 services={services}
+                seenIds={seenIds}
                 onKeep={addToShortlist}
-                onDecided={() => setDecisions((d) => d + 1)}
+                onDecided={onDecided}
                 onOpenSettings={() => setTab("settings")}
                 onOpenShortlist={() => setTab("shortlist")}
                 firstTime={decisions === 0}
