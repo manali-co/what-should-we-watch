@@ -149,7 +149,7 @@ export function DeckScreen({ films, moods, onDecision, onDone, onBack, firstTime
         left={
           <View style={{ gap: 2 }}>
             <Micro>Tonight</Micro>
-            <Pressable onPress={onBack}><Text style={[t.type.title, { color: t.color.ink }]}>{moods.length ? moods.join(" · ") : "anything"}</Text></Pressable>
+            <Pressable testID="deck-back" onPress={onBack}><Text style={[t.type.title, { color: t.color.ink }]}>{moods.length ? moods.join(" · ") : "anything"}</Text></Pressable>
           </View>
         }
         right={

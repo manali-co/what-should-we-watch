@@ -29,6 +29,14 @@ import { GateSheet, GateFeature } from "./src/design/screens/GateSheet";
 type Tab = "tonight" | "shortlist" | "taste" | "settings";
 const STORE = "wsww:v1";
 
+// Persisted JSON is untrusted: a corrupted or wrong-shaped `dismissedNudges` (a string,
+// array, null…) must not slip through `?? {}` and make `.taste`/`.shortlist` reads undefined,
+// which would resurface an already-dismissed nudge. Accept only a plain record of booleans.
+const cleanNudges = (v: unknown): Record<string, boolean> =>
+  v && typeof v === "object" && !Array.isArray(v)
+    ? Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([, b]) => typeof b === "boolean")) as Record<string, boolean>
+    : {};
+
 export default function App() {
   const [loaded] = useFonts({
     BricolageGrotesque_800ExtraBold, BricolageGrotesque_600SemiBold,
@@ -61,12 +69,17 @@ function Root() {
   const [tab, setTab] = useState<Tab>("tonight");
   const [shortlist, setShortlist] = useState<Film[]>([]);
   const [decisions, setDecisions] = useState(0);
+  // Film ids already decided on, so a new deal never re-shows them (persisted, capped).
+  const [seenIds, setSeenIds] = useState<string[]>([]);
   // Guest mode: the full core loop works signed-out on this phone. Account-only
   // features (sync, group, account, export, delete) open a sign-in Gate instead.
   const [guest, setGuest] = useState(false);
+  const [dismissedNudges, setDismissedNudges] = useState<Record<string, boolean>>({});
   const [showAccount, setShowAccount] = useState(false);
   const [gate, setGate] = useState<GateFeature | null>(null);
   const [signInOverlay, setSignInOverlay] = useState(false);
+  // The deck/thinking flow is full-screen (tab bar hidden), matching the design.
+  const [immersive, setImmersive] = useState(false);
   // Clerk's native biometric sign-in (Face ID / Touch ID). No custom app-lock: a valid
   // session flows straight to home; Face ID is an optional faster re-sign-in, enrolled once.
   const { getAvailability, enroll } = useBiometricCredentials();
@@ -78,11 +91,15 @@ function Root() {
   useEffect(() => {
     AsyncStorage.getItem(STORE).then((raw) => {
       if (raw) {
-        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); setGuest(!!s.guest); } catch {}
+        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); setGuest(!!s.guest); setDismissedNudges(cleanNudges(s.dismissedNudges)); setShortlist(s.shortlist ?? []); setDecisions(s.decisions ?? 0); setSeenIds(s.seenIds ?? []); } catch {}
       }
       setReady(true);
     });
   }, []);
+
+  // Persist the shortlist / decisions / seen ids whenever they change (their setters don't
+  // call persist()), so a shortlist survives an app restart instead of vanishing.
+  useEffect(() => { if (ready) persist({}); }, [shortlist, decisions, seenIds, ready]);
 
   // After sign-in, offer to set up Face ID sign-in once — only if the device can enroll one.
   useEffect(() => {
@@ -108,8 +125,8 @@ function Root() {
   };
   const declineBio = () => { setBioAsked(true); setBioOffer(false); persist({ bioAsked: true }); };
 
-  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string; guest?: boolean }) =>
-    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, guest, ...next })).catch(() => {});
+  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string; guest?: boolean; dismissedNudges?: Record<string, boolean>; shortlist?: Film[]; decisions?: number; seenIds?: string[] }) =>
+    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, guest, dismissedNudges, shortlist, decisions, seenIds, ...next })).catch(() => {});
   const finishOnboarding = (svcs: string[], countryName: string, name: string) => {
     setServices(svcs); setCountry(countryName); setDisplayName(name); setOnboarded(true);
     persist({ services: svcs, country: countryName, displayName: name, onboarded: true });
@@ -118,10 +135,14 @@ function Root() {
   const addToShortlist = (films: Film[]) => {
     setShortlist((prev) => { const ids = new Set(prev.map((f) => f.id)); return [...prev, ...films.filter((f) => !ids.has(f.id))]; });
   };
+  // Remember a decided film so a fresh deal excludes it (most-recent-first, capped at 400).
+  const markSeen = (id: string) => setSeenIds((prev) => (prev.includes(id) ? prev : [id, ...prev].slice(0, 400)));
+  const onDecided = (filmId: string) => { setDecisions((d) => d + 1); markSeen(filmId); };
   // "Reset what we've learned" — clears local decisions/taste only; never signs out.
-  const resetLearned = () => { setShortlist([]); setDecisions(0); };
+  const resetLearned = () => { setShortlist([]); setDecisions(0); setSeenIds([]); };
   const continueAsGuest = () => { setGuest(true); persist({ guest: true }); };
   const openSignIn = () => { setGate(null); setShowAccount(false); setSignInOverlay(true); };
+  const dismissNudge = (kind: string) => { const next = { ...dismissedNudges, [kind]: true }; setDismissedNudges(next); persist({ dismissedNudges: next }); };
   const saveName = (name: string) => { setDisplayName(name); persist({ displayName: name }); void user?.update({ firstName: name })?.catch(() => {}); };
   const doExport = async () => {
     const payload = JSON.stringify(
@@ -140,7 +161,7 @@ function Root() {
       return;
     }
     void signOut(); AsyncStorage.removeItem(STORE).catch(() => {});
-    setShowAccount(false); setGuest(false); setStarted(false); setServices([]); setOnboarded(false); setShortlist([]); setDecisions(0); setTab("tonight");
+    setShowAccount(false); setGuest(false); setStarted(false); setServices([]); setOnboarded(false); setShortlist([]); setDecisions(0); setSeenIds([]); setTab("tonight");
   };
   const logout = () => { void signOut(); setShowAccount(false); setStarted(false); setTab("tonight"); };
 
@@ -192,18 +213,36 @@ function Root() {
             {tab === "tonight" && (
               <TonightFlow
                 services={services}
+                seenIds={seenIds}
                 onKeep={addToShortlist}
-                onDecided={() => setDecisions((d) => d + 1)}
+                onDecided={onDecided}
                 onOpenSettings={() => setTab("settings")}
                 onOpenShortlist={() => setTab("shortlist")}
+                onImmersive={setImmersive}
                 firstTime={decisions === 0}
                 userInitial={userInitial}
                 userName={displayName || (user?.firstName ?? undefined)}
                 country={country}
               />
             )}
-            {tab === "shortlist" && <ShortlistScreen films={shortlist} onRemove={(id) => setShortlist((p) => p.filter((f) => f.id !== id))} onWatch={(f) => f.link && Linking.openURL(f.link).catch(() => {})} />}
-            {tab === "taste" && <TasteScreen decisions={decisions} />}
+            {tab === "shortlist" && (
+              <ShortlistScreen
+                films={shortlist}
+                onRemove={(id) => setShortlist((p) => p.filter((f) => f.id !== id))}
+                onWatch={(f) => f.link && Linking.openURL(f.link).catch(() => {})}
+                showNudge={guest && !isSignedIn && shortlist.length >= 3 && !dismissedNudges.shortlist}
+                onNudgeSignIn={openSignIn}
+                onNudgeDismiss={() => dismissNudge("shortlist")}
+              />
+            )}
+            {tab === "taste" && (
+              <TasteScreen
+                refreshKey={decisions}
+                showNudge={guest && !isSignedIn && !dismissedNudges.taste}
+                onNudgeSignIn={openSignIn}
+                onNudgeDismiss={() => dismissNudge("taste")}
+              />
+            )}
             {tab === "settings" && (
               <SettingsScreen
                 isGuest={guest && !isSignedIn}
@@ -222,15 +261,17 @@ function Root() {
               />
             )}
           </View>
-          <View style={styles.nav}>
-            {([["tonight", "Tonight"], ["shortlist", `Shortlist${shortlist.length ? ` ${shortlist.length}` : ""}`], ["taste", "Taste"], ["settings", "Settings"]] as [Tab, string][]).map(
-              ([key, label]) => (
-                <Pressable key={key} testID={`tab-${key}`} style={[styles.navItem, tab === key && styles.navItemOn]} onPress={() => setTab(key)}>
-                  <Text style={[styles.navText, tab === key && styles.navTextOn]}>{label}</Text>
-                </Pressable>
-              ),
-            )}
-          </View>
+          {immersive ? null : (
+            <View style={styles.nav}>
+              {([["tonight", "Tonight"], ["shortlist", `Shortlist${shortlist.length ? ` ${shortlist.length}` : ""}`], ["taste", "Taste"], ["settings", "Settings"]] as [Tab, string][]).map(
+                ([key, label]) => (
+                  <Pressable key={key} testID={`tab-${key}`} style={[styles.navItem, tab === key && styles.navItemOn]} onPress={() => setTab(key)}>
+                    <Text style={[styles.navText, tab === key && styles.navTextOn]}>{label}</Text>
+                  </Pressable>
+                ),
+              )}
+            </View>
+          )}
           <GateSheet feature={gate} onSignIn={openSignIn} onReset={resetLearned} onClose={() => setGate(null)} />
         </>
       )}

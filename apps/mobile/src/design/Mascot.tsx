@@ -1,21 +1,25 @@
-// Mascot — the three-disc mark as a quiet character, reimplemented natively with Reanimated
-// (per the chosen approach). Faithful to the design's Mascot.jsx poses + keyframes: one disc
-// leads per emotion (swells; others soften), discs morph (blob border-radius) and move, eyes
-// and a small mouth emote. The one approximation is the CSS disc-overlap blend (RN has no
+// Mascot — the three-disc mark as a quiet character, native (Reanimated). Faithful to the
+// design's Mascot.jsx: one disc leads per emotion (swells; others soften), and — the point —
+// the discs, eyes and mouth MORPH between states rather than snapping. On a state change a
+// per-pair transition (thinking→found overshoots then pops; →empty melts slowly; →error
+// stumbles) interpolates every pose value from the old state to the new one; the idle loop
+// (drift/blob) runs on top, and one-shot accents (pop/shake/bounce) fire only once the pose
+// has landed. The one approximation of the web is the CSS disc-overlap blend (RN has no
 // mix-blend-mode) — discs are laid with slight transparency instead.
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { StyleProp, View, ViewStyle } from "react-native";
-import Animated, { Easing, SharedValue, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming, interpolate } from "react-native-reanimated";
+import Animated, { Easing, EasingFunctionFactory, SharedValue, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming, interpolate } from "react-native-reanimated";
 import { useTheme } from "./tokens";
 import type { MoodHue } from "./tokens";
 
 export type MascotState = "idle" | "thinking" | "found" | "surprise" | "empty" | "error" | "celebrate";
 
 type Disc = { x?: number; y?: number; sx?: number; sy?: number; rotate?: number; blob?: number };
+type Eyes = { x?: number; y?: number; sx?: number; sy?: number; rotate?: number };
 type Face = {
   lead: MoodHue | null;
   mouth: { shape: "line" | "smile" | "frown" | "o" | "grin"; scale?: number; x?: number; y?: number; rotate?: number };
-  eyes?: { x?: number; y?: number; sx?: number; sy?: number; rotate?: number };
+  eyes?: Eyes;
   discs: [Disc, Disc, Disc];
   accent: "breathe" | "scan" | "pop" | "wide" | "sag" | "shake" | "bounce";
 };
@@ -33,22 +37,71 @@ const STATES: Record<MascotState, Face> = {
   celebrate: { lead: "coral", mouth: { shape: "grin", scale: 1.3 }, eyes: { sy: 0.45, y: -10, rotate: -4 }, discs: [{ sx: 0.9, sy: 1.16 }, { sx: 0.92, sy: 1.12, rotate: -8 }, { sx: 0.92, sy: 1.12, rotate: 8 }], accent: "bounce" },
 };
 
+// Per-pair morph timing (ms, easing, and how fast the face lands vs the body). Mirrors the
+// design's TRANSITIONS: overshoot into found, a slow melt into empty, a stumble into error.
+type Tr = { ms: number; ease: EasingFunctionFactory; face: number };
+const EASE = {
+  standard: Easing.bezier(0.2, 1, 0.3, 1),
+  overshoot: Easing.bezier(0.2, 1.2, 0.3, 1),
+  slow: Easing.bezier(0.4, 0, 0.2, 1),
+  stumble: Easing.bezier(0.3, 0, 0.7, 1),
+};
+function transitionFor(from: MascotState, to: MascotState): Tr {
+  const key = `${from}>${to}`;
+  const T: Record<string, Tr> = {
+    "thinking>found": { ms: 600, ease: EASE.overshoot, face: 0.7 },
+    "thinking>empty": { ms: 1100, ease: EASE.slow, face: 0.9 },
+    "thinking>error": { ms: 400, ease: EASE.stumble, face: 0.6 },
+    "found>celebrate": { ms: 700, ease: EASE.overshoot, face: 0.7 },
+  };
+  if (T[key]) return T[key];
+  if (to === "surprise") return { ms: 380, ease: EASE.overshoot, face: 0.5 };
+  if (to === "empty") return { ms: 1100, ease: EASE.slow, face: 0.9 };
+  if (to === "error") return { ms: 400, ease: EASE.stumble, face: 0.6 };
+  return { ms: 700, ease: EASE.standard, face: 0.75 };
+}
+
+const num = (v: number | undefined, d = 0) => (v == null ? d : v);
+
 export function Mascot({ state = "idle", size = 120, label, style }: { state?: MascotState; size?: number; label?: string; style?: StyleProp<ViewStyle> }) {
   const t = useTheme();
   const s = STATES[state] ?? STATES.idle;
+  const prevRef = useRef<MascotState>(state);
+  const sPrev = STATES[prevRef.current] ?? STATES.idle;
+  const tr = transitionFor(prevRef.current, state);
   const d = size * 0.58;
   const eyeSize = size * 0.075;
   const gap = size * 0.13;
   const ink = t.color.inkInverse;
 
-  // loop: continuous yoyo 0..1; enter: one-shot 0..1 on state change.
+  // morph: 0 at a state change → 1 as the pose lands (body pace). morphFace lands sooner.
+  // loop: continuous 0..1 yoyo for idle drift/blob. enter: the one-shot accent, delayed
+  // until the morph completes so pop/shake/bounce read as a reaction, not a jump-cut.
+  const morph = useSharedValue(1);
+  const morphFace = useSharedValue(1);
   const loop = useSharedValue(0);
   const enter = useSharedValue(0);
+
   useEffect(() => {
-    loop.value = 0;
     loop.value = withRepeat(withTiming(1, { duration: 3000, easing: Easing.inOut(Easing.ease) }), -1, true);
-    if (s.accent === "shake") { enter.value = 0; enter.value = withSequence(withTiming(1, { duration: 60 }), withTiming(-1, { duration: 60 }), withTiming(1, { duration: 60 }), withTiming(0, { duration: 60 })); }
-    else { enter.value = 0; enter.value = withTiming(1, { duration: 640, easing: Easing.out(Easing.cubic) }); }
+  }, []);
+
+  useEffect(() => {
+    const same = prevRef.current === state;
+    morph.value = same ? 1 : 0;
+    morphFace.value = same ? 1 : 0;
+    if (!same) {
+      morph.value = withTiming(1, { duration: tr.ms, easing: tr.ease });
+      morphFace.value = withTiming(1, { duration: Math.round(tr.ms * tr.face), easing: tr.ease });
+    }
+    // Fire the one-shot accent once the pose has landed.
+    enter.value = 0;
+    const oneShot = s.accent === "shake"
+      ? withSequence(withTiming(1, { duration: 60 }), withTiming(-1, { duration: 60 }), withTiming(1, { duration: 60 }), withTiming(0, { duration: 60 }))
+      : withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) });
+    enter.value = same ? oneShot : withDelay(tr.ms, oneShot);
+    const id = setTimeout(() => { prevRef.current = state; }, tr.ms + 30);
+    return () => clearTimeout(id);
   }, [state]);
 
   const groupStyle = useAnimatedStyle(() => {
@@ -60,15 +113,30 @@ export function Mascot({ state = "idle", size = 120, label, style }: { state?: M
     return {};
   });
 
+  const ep = sPrev.eyes ?? {}, en = s.eyes ?? {};
   const eyesStyle = useAnimatedStyle(() => {
+    const m = morphFace.value;
     const scan = s.accent === "scan" ? interpolate(loop.value, [0, 0.5, 1], [-(gap + eyeSize) * 0.22, (gap + eyeSize) * 0.22, -(gap + eyeSize) * 0.22]) : 0;
     return {
       transform: [
-        { translateX: scan + ((s.eyes?.x ?? 0) / 100) * size },
-        { translateY: ((s.eyes?.y ?? 0) / 100) * size },
-        { rotate: `${s.eyes?.rotate ?? 0}deg` },
-        { scaleX: s.eyes?.sx ?? 1 },
-        { scaleY: s.eyes?.sy ?? 1 },
+        { translateX: scan + (interpolate(m, [0, 1], [num(ep.x), num(en.x)]) / 100) * size },
+        { translateY: (interpolate(m, [0, 1], [num(ep.y), num(en.y)]) / 100) * size },
+        { rotate: `${interpolate(m, [0, 1], [num(ep.rotate), num(en.rotate)])}deg` },
+        { scaleX: interpolate(m, [0, 1], [num(ep.sx, 1), num(en.sx, 1)]) },
+        { scaleY: interpolate(m, [0, 1], [num(ep.sy, 1), num(en.sy, 1)]) },
+      ],
+    };
+  });
+
+  const mp = sPrev.mouth, mn = s.mouth;
+  const mouthStyle = useAnimatedStyle(() => {
+    const m = morphFace.value;
+    return {
+      transform: [
+        { translateX: (interpolate(m, [0, 1], [num(mp.x), num(mn.x)]) / 100) * size },
+        { translateY: (interpolate(m, [0, 1], [num(mp.y), num(mn.y)]) / 100) * size },
+        { rotate: `${interpolate(m, [0, 1], [num(mp.rotate), num(mn.rotate)])}deg` },
+        { scale: interpolate(m, [0, 1], [num(mp.scale, 1), num(mn.scale, 1)]) },
       ],
     };
   });
@@ -76,7 +144,13 @@ export function Mascot({ state = "idle", size = 120, label, style }: { state?: M
   return (
     <Animated.View accessibilityLabel={label ?? `mascot: ${state}`} style={[{ width: size, height: size }, groupStyle, style]}>
       {HUES.map((h, i) => (
-        <Disc key={h} hue={h} pose={s.discs[i]} lead={s.lead === h} dim={s.lead != null && s.lead !== h} d={d} left={POS[i][0] * size - d / 2} top={POS[i][1] * size - d / 2} fill={t.color.mood[h].fill} loop={loop} accent={s.accent} index={i} />
+        <Disc
+          key={h} hue={h} pose={s.discs[i]} posePrev={sPrev.discs[i]}
+          lead={s.lead === h} leadPrev={sPrev.lead === h}
+          dim={s.lead != null && s.lead !== h} dimPrev={sPrev.lead != null && sPrev.lead !== h}
+          d={d} left={POS[i][0] * size - d / 2} top={POS[i][1] * size - d / 2}
+          fill={t.color.mood[h].fill} loop={loop} morph={morph} accent={s.accent} index={i}
+        />
       ))}
 
       <Animated.View style={[{ position: "absolute", left: size / 2 - (gap + eyeSize) / 2, top: size * 0.53 - eyeSize / 2, width: gap + eyeSize, height: eyeSize, flexDirection: "row", justifyContent: "space-between" }, eyesStyle]}>
@@ -85,34 +159,44 @@ export function Mascot({ state = "idle", size = 120, label, style }: { state?: M
         ))}
       </Animated.View>
 
-      <View style={{ position: "absolute", left: 0, right: 0, top: size * 0.53 + size * 0.09, alignItems: "center", transform: [{ translateX: ((s.mouth.x ?? 0) / 100) * size }, { translateY: ((s.mouth.y ?? 0) / 100) * size }, { rotate: `${s.mouth.rotate ?? 0}deg` }, { scale: s.mouth.scale ?? 1 }] }}>
+      <Animated.View style={[{ position: "absolute", left: 0, right: 0, top: size * 0.53 + size * 0.09, alignItems: "center" }, mouthStyle]}>
         <Mouth shape={s.mouth.shape} size={size} ink={ink} />
-      </View>
+      </Animated.View>
     </Animated.View>
   );
 }
 
-function Disc({ hue, pose, lead, dim, d, left, top, fill, loop, accent, index }: { hue: MoodHue; pose: Disc; lead: boolean; dim: boolean; d: number; left: number; top: number; fill: string; loop: SharedValue<number>; accent: Face["accent"]; index: number }) {
+function Disc({ hue, pose, posePrev, lead, leadPrev, dim, dimPrev, d, left, top, fill, loop, morph, accent, index }: {
+  hue: MoodHue; pose: Disc; posePrev: Disc; lead: boolean; leadPrev: boolean; dim: boolean; dimPrev: boolean;
+  d: number; left: number; top: number; fill: string; loop: SharedValue<number>; morph: SharedValue<number>; accent: Face["accent"]; index: number;
+}) {
   const anim = useAnimatedStyle(() => {
-    const leadScale = lead ? 1.14 : 1;
-    // Signature per-accent drift, phase-shifted per disc.
+    const m = morph.value;
+    // Interpolate the whole pose from where we were to where we're going.
+    const px = interpolate(m, [0, 1], [num(posePrev.x), num(pose.x)]);
+    const py = interpolate(m, [0, 1], [num(posePrev.y), num(pose.y)]);
+    const psx = interpolate(m, [0, 1], [num(posePrev.sx, 1), num(pose.sx, 1)]);
+    const psy = interpolate(m, [0, 1], [num(posePrev.sy, 1), num(pose.sy, 1)]);
+    const prot = interpolate(m, [0, 1], [num(posePrev.rotate), num(pose.rotate)]);
+    const leadScale = interpolate(m, [0, 1], [leadPrev ? 1.14 : 1, lead ? 1.14 : 1]);
+    const opacity = interpolate(m, [0, 1], [dimPrev ? 0.78 : 0.92, dim ? 0.78 : 0.92]);
+    // Idle loop (drift + blob), phase-shifted per disc, layered on top of the posed transform.
     const phase = (loop.value + index * 0.15) % 1;
     let dx = 0, dy = 0, rot = 0;
     if (accent === "scan" || accent === "breathe") { dx = interpolate(phase, [0, 0.5, 1], [-0.04, 0.04, -0.04]) * d; dy = interpolate(phase, [0, 0.5, 1], [0.03, -0.03, 0.03]) * d; }
-    if (accent === "bounce") dy = interpolate(loop.value, [0, 1], [0, -0.06]) * d;
     if (accent === "shake") rot = interpolate(phase, [0, 0.5, 1], [-3, 3, -3]);
     const rBase = interpolate(loop.value, [0, 1], [0.5, pose.blob ? 0.42 : 0.5]) * d;
     const rAlt = interpolate(loop.value, [0, 1], [0.5, pose.blob ? 0.58 : 0.5]) * d;
     return {
       transform: [
-        { translateX: ((pose.x ?? 0) / 100) * d + dx },
-        { translateY: ((pose.y ?? 0) / 100) * d + dy },
-        { rotate: `${(pose.rotate ?? 0) + rot}deg` },
-        { scaleX: (pose.sx ?? 1) * leadScale },
-        { scaleY: (pose.sy ?? 1) * leadScale },
+        { translateX: (px / 100) * d + dx },
+        { translateY: (py / 100) * d + dy },
+        { rotate: `${prot + rot}deg` },
+        { scaleX: psx * leadScale },
+        { scaleY: psy * leadScale },
       ],
       borderTopLeftRadius: rAlt, borderTopRightRadius: rBase, borderBottomRightRadius: rAlt, borderBottomLeftRadius: rBase,
-      opacity: dim ? 0.78 : 0.92,
+      opacity,
     };
   });
   return <Animated.View style={[{ position: "absolute", left, top, width: d, height: d, backgroundColor: fill }, anim]} />;

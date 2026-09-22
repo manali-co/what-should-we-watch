@@ -13,7 +13,7 @@ export type Film = {
 };
 
 const SERVICE_LABEL: Record<string, string> = {
-  netflix: "Netflix", prime: "Prime Video", disney: "Disney+", hbo: "Max",
+  netflix: "Netflix", prime: "Prime Video", disney: "Disney+", hbo: "Max", max: "Max",
   hulu: "Hulu", apple: "Apple TV+", paramount: "Paramount+", peacock: "Peacock",
 };
 export const serviceLabel = (id: string) => SERVICE_LABEL[id] ?? id;

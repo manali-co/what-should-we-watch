@@ -18,13 +18,14 @@ const COMPANY: Record<string, string> = { me: "solo", two: "couple", group: "fri
 type Phase = "mood" | "thinking" | "deck" | "end" | "empty" | "error";
 
 export function TonightFlow({
-  services, onKeep, onDecided, onOpenSettings, onOpenShortlist, firstTime, userInitial, userName, onTutorialSeen, country,
+  services, seenIds, onKeep, onDecided, onOpenSettings, onOpenShortlist, onImmersive, firstTime, userInitial, userName, onTutorialSeen, country,
 }: {
-  services: string[]; onKeep: (films: Film[]) => void; onDecided?: () => void; onOpenSettings: () => void;
-  onOpenShortlist: () => void; firstTime?: boolean; userInitial?: string; userName?: string; onTutorialSeen?: () => void; country?: string;
+  services: string[]; seenIds?: string[]; onKeep: (films: Film[]) => void; onDecided?: (filmId: string) => void; onOpenSettings: () => void;
+  onOpenShortlist: () => void; onImmersive?: (immersive: boolean) => void; firstTime?: boolean; userInitial?: string; userName?: string; onTutorialSeen?: () => void; country?: string;
 }) {
   const [phase, setPhase] = useState<Phase>("mood");
   const [moods, setMoods] = useState<string[]>([]);
+  const [company, setCompany] = useState("solo");
   const [films, setFilms] = useState<Film[]>([]);
   const [kept, setKept] = useState<Film[]>([]);
   const [pending, setPending] = useState(false);
@@ -35,8 +36,16 @@ export function TonightFlow({
   const hues: MoodHue[] = moods.map((w) => hueOf(w));
   const serviceNames = services.map(serviceLabel);
 
+  // The deck + thinking screens are immersive (full-screen, no tab bar) like the design;
+  // the mood/end/edge screens are not. Tell the shell so it can hide/show the tab bar.
+  useEffect(() => {
+    onImmersive?.(phase === "thinking" || phase === "deck");
+    return () => onImmersive?.(false);
+  }, [phase, onImmersive]);
+
   const deal = async (picked: string[], who: string) => {
     setMoods(picked);
+    setCompany(COMPANY[who] ?? "solo");
     setFilms([]);
     setFailed(false);
     setThinkingDone(false);
@@ -44,7 +53,9 @@ export function TonightFlow({
     setPhase("thinking");
     try {
       const deck = await fetchDeck({ services, moods: picked, company: COMPANY[who] ?? "solo", country: countryCode(country) });
-      setFilms(deck);
+      // Never re-show a film already decided on (belt-and-braces over server-side exclusion).
+      const seen = new Set(seenIds ?? []);
+      setFilms(deck.filter((f) => !seen.has(f.id)));
     } catch {
       setFailed(true);
     } finally {
@@ -61,7 +72,7 @@ export function TonightFlow({
   }, [phase, thinkingDone, pending, failed, films, firstTime]);
 
   const onDecision = (film: Film, action: "like" | "dislike" | "maybe" | "watched", reaction?: "loved" | "okay" | "disliked") => {
-    onDecided?.();
+    onDecided?.(film.id);
     if (action === "like" || action === "maybe") onKeep([film]); // land in the shortlist immediately
     void recordDecision({ titleId: film.id, title: film.title, action, reaction, moods });
   };
@@ -87,7 +98,7 @@ export function TonightFlow({
     return <ApiDown onRetry={() => deal(moods, "me")} onOpenShortlist={onOpenShortlist} />;
 
   if (phase === "end")
-    return <EndScreen kept={kept} onOpenShortlist={() => { onOpenShortlist(); setPhase("mood"); }} onAgain={() => setPhase("mood")} />;
+    return <EndScreen kept={kept} moods={moods} company={company} onOpenShortlist={() => { onOpenShortlist(); setPhase("mood"); }} onAgain={() => setPhase("mood")} />;
 
   return (
     <DeckScreen

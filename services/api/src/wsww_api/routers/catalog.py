@@ -84,5 +84,59 @@ async def record_decision(request: Request) -> None:
         "titleId": body.get("titleId"), "title": body.get("title"),
         "action": body.get("action"), "reaction": body.get("reaction"),
         "moods": body.get("moods") or [],
+        "moment": body.get("moment") or {},
     })
     return None
+
+
+@router.get("/catalog/taste")
+async def taste(request: Request) -> dict[str, object]:
+    """The viewer's real taste: the model's running notes plus honest decision
+    tallies. Empty everything for a brand-new (or guest, no device) viewer, so the
+    UI shows a truthful cold-start rather than invented patterns."""
+    empty = {"total": 0, "actions": {"like": 0, "maybe": 0, "dislike": 0, "watched": 0},
+             "reactions": {"loved": 0, "okay": 0, "disliked": 0}, "topMoods": [], "patterns": []}
+    deps = deps_of(request)
+    device = _identity(request)
+    if not device:
+        return {"notes": "", **empty}
+    return {
+        "notes": deps.taste.get_notes(device),
+        **deps.decisions.stats(device),
+        "patterns": deps.decisions.patterns(device),
+    }
+
+
+@router.post("/catalog/results")
+async def results(request: Request) -> dict[str, object]:
+    """Rank a kept shortlist into tonight's decision. Solo unless `participants`
+    are supplied (group session), in which case it ranks for group satisfaction.
+    Falls back to the given order if there's no engine or the model is unusable."""
+    deps = deps_of(request)
+    device = _identity(request)
+    body = await request.json()
+    kept = body.get("kept") or []
+    if not kept or deps.recs is None:
+        return {"films": kept, "verdict": ""}
+
+    from ..recs_engine import Moment, Participant, ShortlistRequest
+
+    mo = body.get("moment") or {}
+    participants = [
+        Participant(name=p.get("name") or "", taste_notes=p.get("tasteNotes") or "",
+                    votes=p.get("votes") or {})
+        for p in (body.get("participants") or [])
+    ]
+    req = ShortlistRequest(
+        kept=kept, moods=body.get("moods") or [],
+        moment=Moment(daypart=mo.get("daypart") or "", weekday=mo.get("weekday") or "",
+                      is_weekend=bool(mo.get("isWeekend")), season=mo.get("season") or ""),
+        company=body.get("company") or "", length=body.get("length") or "",
+        taste_notes=deps.taste.get_notes(device) if device else "",
+        participants=participants,
+    )
+    try:
+        res = deps.recs.rank_shortlist(req)
+        return {"films": res.films, "verdict": res.verdict}
+    except Exception:  # noqa: BLE001 - never fail results; hand back the original order
+        return {"films": kept, "verdict": ""}

@@ -11,6 +11,18 @@ async function mockApi(page: Page) {
   await page.route("**/v1/catalog/deck*", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ films: FILMS }) }));
   await page.route("**/v1/catalog/decisions*", (route) => route.fulfill({ status: 204, body: "" }));
+  // Intelligence endpoints: rank the kept shortlist (echo the posted order + a verdict) and
+  // return a cold-start taste profile, so tests never depend on the live engine.
+  await page.route("**/v1/catalog/results*", async (route) => {
+    const kept = (route.request().postDataJSON()?.kept ?? []) as { title: string }[];
+    const verdict = kept.length ? `Tonight, ${kept[0].title}.` : "";
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ films: kept, verdict }) });
+  });
+  await page.route("**/v1/catalog/taste*", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      notes: "", total: 0, actions: { like: 0, maybe: 0, dislike: 0, watched: 0 },
+      reactions: { loved: 0, okay: 0, disliked: 0 }, topMoods: [], patterns: [],
+    }) }));
 }
 
 async function enterAsGuest(page: Page) {
@@ -77,5 +89,85 @@ test.describe("guest flow (web)", () => {
     await page.getByTestId("tab-taste").click();
     await page.getByTestId("tab-settings").click();
     await expect(page.getByText("You’re a guest.")).toBeVisible();
+  });
+
+  test("taste shows an honest cold-start, not fabricated patterns", async ({ page }) => {
+    await enterAsGuest(page);
+    await completeOnboarding(page);
+    await page.getByTestId("tab-taste").click();
+    // A brand-new viewer must see the truthful empty state, never invented data.
+    await expect(page.getByText("We’re still learning your taste.")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("With Jo")).toHaveCount(0);
+    // …and the "we've learned a fair bit about you" nudge must not appear before we have.
+    await expect(page.getByText("This is only on this phone")).toHaveCount(0);
+  });
+});
+
+// The deck's PanResponder responds to touch events, not synthetic mouse drags, so a
+// right-swipe is driven by dispatching a real touch sequence on the top card.
+async function swipeRight(page: Page, title: string) {
+  const box = await page.getByText(title).first().boundingBox();
+  if (!box) throw new Error(`no card for ${title}`);
+  const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  await page.evaluate(({ x, y }) => {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return;
+    const mk = (c: number) => new Touch({ identifier: 1, target: el, clientX: c, clientY: y, pageX: c, pageY: y, radiusX: 10, radiusY: 10, force: 1 });
+    const fire = (type: string, c: number, end: boolean) =>
+      el.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, composed: true, touches: end ? [] : [mk(c)], changedTouches: [mk(c)], targetTouches: end ? [] : [mk(c)] }));
+    fire("touchstart", x, false);
+    for (let i = 1; i <= 14; i++) fire("touchmove", x + i * 20, false);
+    fire("touchend", x + 280, true);
+  }, { x: cx, y: cy });
+  await page.waitForTimeout(800);
+}
+
+async function dealADeck(page: Page) {
+  if (await page.getByText("cozy", { exact: true }).count()) await page.getByText("cozy", { exact: true }).first().click();
+  await page.getByText("Deal ten").click();
+  await expect(page.getByText(FILMS[0].title).first()).toBeVisible({ timeout: 25_000 });
+  const got = page.getByText("Got it");
+  if (await got.count()) { await got.first().click(); await page.waitForTimeout(400); }
+}
+
+test.describe("deck decisions (web)", () => {
+  test.beforeEach(async ({ page }) => { await mockApi(page); });
+
+  test("a right-swipe lands the film in the shortlist and it survives a reload", async ({ page }) => {
+    await enterAsGuest(page);
+    await completeOnboarding(page);
+    await dealADeck(page);
+    await swipeRight(page, FILMS[0].title);
+
+    // The deck is immersive (tab bar hidden); leave it via the deck's back to the mood screen.
+    await page.getByTestId("deck-back").click();
+    await page.getByTestId("tab-shortlist").click();
+    await expect(page.getByText(FILMS[0].title).first()).toBeVisible({ timeout: 8_000 });
+
+    // Persistence: an iOS JS reload must not wipe the shortlist.
+    await page.reload({ waitUntil: "networkidle" });
+    await page.waitForTimeout(1200);
+    await page.getByTestId("tab-shortlist").click();
+    await expect(page.getByText(FILMS[0].title).first()).toBeVisible({ timeout: 8_000 });
+  });
+
+  test("re-dealing never re-shows an already-decided film", async ({ page }) => {
+    await enterAsGuest(page);
+    await completeOnboarding(page);
+    await dealADeck(page);
+    await swipeRight(page, FILMS[0].title); // decide on the first film
+
+    // Back out of the immersive deck to the mood screen, then re-deal.
+    await page.getByTestId("deck-back").click();
+    await page.waitForTimeout(400);
+    // Deal again — the decided film is gone, so wait on one of the others, not FILMS[0].
+    if (await page.getByText("cozy", { exact: true }).count()) await page.getByText("cozy", { exact: true }).first().click();
+    await page.getByText("Deal ten").click();
+    await expect(page.getByText(/Midnight Cartography|Paper Boats/).first()).toBeVisible({ timeout: 25_000 });
+    await page.waitForTimeout(600);
+    const body = await page.evaluate(() => document.body.innerText);
+    // The decided film is excluded; the others still appear.
+    expect(body).not.toContain(FILMS[0].title);
+    expect(/Midnight Cartography|Paper Boats/.test(body)).toBeTruthy();
   });
 });

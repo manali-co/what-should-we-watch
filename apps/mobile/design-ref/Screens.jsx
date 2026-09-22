@@ -23,9 +23,11 @@ function Taste({ app, set }) {
   ];
   const filmOf = id => D.films.find(f => f.id === id);
   return (
-    <Screen>
-      <TopRow left={<Headline size="m">Taste</Headline>} right={<Button variant="ghost" size="sm" onClick={() => set({ route: 'mood' })}>Done</Button>} />
+    <Screen style={{ paddingBottom: 'calc(50px + var(--safe-bottom))' }}>
+      <TopRow left={<Headline size="m">Taste</Headline>} />
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: 'var(--space-9)', maskImage: 'linear-gradient(to bottom, #000 94%, transparent)' }}>
+        {/* Guest → member: this taste lives only on this phone. Same nudge as the Shortlist. */}
+        <ConvertNudge app={app} set={set} kind="taste" />
         <div style={{ paddingTop: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           <Headline size="l">You like films that take their time, as long as they're under two hours.</Headline>
           <Body size="l">You say yes to <span style={{ color: 'var(--mood-lagoon-ink)' }}>slow burns</span> and <span style={{ color: 'var(--mood-coral-ink)' }}>quiet, tender</span> ones more than anything else. You almost never finish a film that starts after 11. Funny beats clever on a Tuesday. You've marked 14 as seen, and liked 11 of them, so we trust your past.</Body>
@@ -65,28 +67,36 @@ function Taste({ app, set }) {
 function Settings({ app, set }) {
   const { Button, ListRow, SectionLabel, Segmented, Switch } = useC();
   const svc = D.services.filter(s => app.services[s.id]).map(s => s.name);
+  // Settings is reachable as a guest; account-only rows open the Gate sheet instead.
   return (
-    <Screen>
-      <TopRow left={<Headline size="m">Settings</Headline>} right={<Button variant="ghost" size="sm" onClick={() => set({ route: 'mood' })}>Done</Button>} />
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: 'var(--space-9)', maskImage: 'linear-gradient(to bottom, #000 94%, transparent)' }}>
+    <Screen style={{ paddingBottom: 'calc(50px + var(--safe-bottom))' }}>
+      <TopRow left={<Headline size="m">Settings</Headline>} right={app.signedIn ? null : <Button size="sm" onClick={() => set({ route: 'signin', signinMode: 'options', returnTo: 'settings' })}>Sign in</Button>} />
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: 'var(--space-6)', maskImage: 'linear-gradient(to bottom, #000 94%, transparent)' }}>
+        {!app.signedIn && <div style={{ marginTop: 'var(--space-4)', padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', gap: 6 }}><span style={{ font: 'var(--type-label)', color: 'var(--color-ink)' }}>You’re a guest.</span><Body style={{ font: 'var(--type-caption)' }}>Everything works on this phone. Sign in to decide with friends, keep your taste on a new phone, or export it.</Body></div>}
+        <SectionLabel>Account</SectionLabel>
+        <ListRow title={app.signedIn ? (app.displayName || 'Account') : 'Account'} subtitle={app.signedIn ? (app.email || 'manali@example.com') + ' · Google' : 'Name, email, connected services'} chevron onClick={gated(app, set, 'account', () => set({ route: 'account' }))} leading={app.signedIn ? <Avatar person={{ name: app.displayName || 'You', initial: (app.displayName || 'Y')[0].toUpperCase() }} size={36} /> : null} />
+        <ListRow title="Sync across devices" subtitle={app.signedIn ? 'On · synced 2 minutes ago' : 'Sign in to turn on'} trailing={<Switch checked={!!app.signedIn && app.sync !== false} onChange={v => app.signedIn ? set({ sync: v }) : set({ gate: 'sync' })} label="Sync" />} />
+        <ListRow title="Group mode" subtitle="Decide with up to six people" trailing={<Switch checked={!!app.signedIn && app.who === 'group'} onChange={v => app.signedIn ? set({ who: v ? 'group' : 'me' }) : set({ gate: 'group' })} label="Group mode" />} />
+        <ListRow title="Lock with Face ID" subtitle="Ask for Face ID when the app opens" trailing={<Switch checked={!!app.signedIn && !!app.faceId} onChange={v => app.signedIn ? set({ faceId: v }) : set({ gate: 'faceid' })} label="Face ID" />} last />
         <SectionLabel>Where and what</SectionLabel>
-        <ListRow title="Country" value="United States" chevron onClick={() => {}} />
-        <ListRow title="Streaming services" subtitle={svc.join(', ')} value={String(svc.length)} chevron onClick={() => set({ route: 'onboarding', onboardingStep: 1 })} last />
-        <SectionLabel>Accounts</SectionLabel>
-        <ListRow title="Apple" value={app.signedIn === 'apple' ? 'Signed in' : undefined} trailing={app.signedIn !== 'apple' ? <Button size="sm" variant="outline" onClick={() => set({ signedIn: 'apple' })}>Connect</Button> : null} />
-        <ListRow title="Google" value={app.signedIn === 'google' ? 'Signed in' : undefined} trailing={app.signedIn !== 'google' ? <Button size="sm" variant="outline" onClick={() => set({ signedIn: 'google' })}>Connect</Button> : null} last />
+        <ListRow title="Country" value={app.country || 'United States'} chevron onClick={() => set({ route: 'country' })} />
+        <ListRow title="Streaming services" subtitle={svc.join(', ')} value={String(svc.length)} chevron onClick={() => set({ route: 'onboarding', onboardingStep: 1, fromSettings: true })} last />
         <SectionLabel>Appearance</SectionLabel>
         <div style={{ padding: '6px 0 14px' }}><Segmented options={[{ value: 'system', label: 'System' }, { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }]} value={app.themePref || 'system'} onChange={v => set({ themePref: v })} /></div>
         <ListRow title="Reduce motion" subtitle="Follows the system setting; override here" trailing={<Switch checked={!!app.reducedMotion} onChange={v => set({ reducedMotion: v })} label="Reduce motion" />} last />
         <SectionLabel>Follow-up</SectionLabel>
         <ListRow title="Ask how it went" subtitle="The morning after you tap Watch now" trailing={<Switch checked={app.followUp !== false} onChange={v => set({ followUp: v })} label="Follow-up" />} />
-        <ListRow title="Around" value="10:00" chevron onClick={() => {}} last />
+        <ListRow title="Around" value="10:00" chevron onClick={() => {}} />
+        <ListRow title="Notification permission" subtitle={app.notifAsked ? (app.followUp === false ? 'Declined · ask in the app instead' : 'Allowed') : 'Not asked yet'} chevron onClick={() => set({ route: 'notif', returnTo: 'settings' })} last />
+        <SectionLabel>Help</SectionLabel>
+        <ListRow title="How swiping works" subtitle="Replay the four swipes and tap-for-trailer" chevron onClick={() => set({ route: 'tutorial', deck: D.films.slice(0, 10).map(f => f.id), deckIndex: 0, tutorialReturn: 'settings' })} last />
         <SectionLabel>Your data</SectionLabel>
         <ListRow title="Taste" subtitle="What we've learned, in plain words" chevron onClick={() => set({ route: 'taste' })} />
-        <ListRow title="Export my data" subtitle="Every decision as a file you own" chevron onClick={() => {}} />
-        <ListRow title="Reset what we've learned" onClick={() => set({ decisions: {}, reactions: {} })} />
-        <ListRow title="Delete account" destructive onClick={() => {}} last />
-        <Body tone="tertiary" style={{ font: 'var(--type-caption)', marginTop: 'var(--space-6)' }}>What Should We Watch 1.0 · Availability data is checked nightly for your country.</Body>
+        <ListRow title="Export my data" subtitle="Every decision as a file you own" chevron onClick={gated(app, set, 'export', () => set({ sheet: 'export', exportStep: 0 }))} />
+        <ListRow title="Reset what we've learned" subtitle="Clears decisions and taste on this phone" onClick={() => set({ decisions: {}, reactions: {} })} />
+        {app.signedIn && <ListRow title="Log out" onClick={() => set({ sheet: 'logout' })} />}
+        <ListRow title="Delete account" destructive onClick={gated(app, set, 'delete', () => set({ sheet: 'delete', deleteTyped: '' }))} last />
+        <Body tone="tertiary" style={{ font: 'var(--type-caption)', marginTop: 'var(--space-6)' }}>What Should We Watch 0.1.0 · Availability data is checked nightly for your country.</Body>
       </div>
     </Screen>
   );
