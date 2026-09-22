@@ -2,7 +2,6 @@
 // Three-disc Blend, the "Tonight feels like…" promise, three numbered steps, "Get started".
 // Presentational only; emits onGetStarted.
 import { Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Body, Headline, Screen } from "../primitives";
 import { Mascot } from "../Mascot";
 import { Button } from "../controls";
@@ -16,14 +15,15 @@ const STEPS: [string, string][] = [
 
 export function WelcomeScreen({ onGetStarted, onContinueAsGuest }: { onGetStarted: () => void; onContinueAsGuest?: () => void }) {
   const t = useTheme();
-  const insets = useSafeAreaInsets();
   return (
-    <Screen padded={false}>
-      <View style={{ position: "absolute", left: t.space.pageInset, right: t.space.pageInset, top: 96 }}>
+    // Flex column so it adapts to any phone height (the old fixed top/bottom offsets left a
+    // gap mid-screen on tall phones and overlapped on short ones).
+    <Screen>
+      <View style={{ marginTop: t.space[7], alignItems: "flex-start" }}>
         <Mascot state="idle" size={72} />
       </View>
 
-      <View style={{ position: "absolute", left: t.space.pageInset, right: t.space.pageInset, top: 178, gap: t.space[5] }}>
+      <View style={{ marginTop: t.space[7], gap: t.space[5] }}>
         <Headline>
           Tonight feels like{"… "}
           <Headline style={{ color: t.color.mood.coral.ink }}>cozy</Headline>. Or{" "}
@@ -42,7 +42,9 @@ export function WelcomeScreen({ onGetStarted, onContinueAsGuest }: { onGetStarte
         </View>
       </View>
 
-      <View style={{ position: "absolute", left: t.space.pageInset, right: t.space.pageInset, bottom: insets.bottom + 12, gap: t.space[3] }}>
+      <View style={{ flex: 1 }} />
+
+      <View style={{ gap: t.space[3], paddingBottom: t.space[3] }}>
         <Button variant="primary" size="lg" full onPress={onGetStarted}>Get started</Button>
         {onContinueAsGuest ? <Button variant="ghost" size="lg" full onPress={onContinueAsGuest}>Continue as guest</Button> : null}
         <Body tone="tertiary" style={[t.type.caption, { textAlign: "center" }]}>Free. No card. Guests get the full loop on this phone; sign in later to decide with friends.</Body>

@@ -18,10 +18,10 @@ const COMPANY: Record<string, string> = { me: "solo", two: "couple", group: "fri
 type Phase = "mood" | "thinking" | "deck" | "end" | "empty" | "error";
 
 export function TonightFlow({
-  services, seenIds, onKeep, onDecided, onOpenSettings, onOpenShortlist, firstTime, userInitial, userName, onTutorialSeen, country,
+  services, seenIds, onKeep, onDecided, onOpenSettings, onOpenShortlist, onImmersive, firstTime, userInitial, userName, onTutorialSeen, country,
 }: {
   services: string[]; seenIds?: string[]; onKeep: (films: Film[]) => void; onDecided?: (filmId: string) => void; onOpenSettings: () => void;
-  onOpenShortlist: () => void; firstTime?: boolean; userInitial?: string; userName?: string; onTutorialSeen?: () => void; country?: string;
+  onOpenShortlist: () => void; onImmersive?: (immersive: boolean) => void; firstTime?: boolean; userInitial?: string; userName?: string; onTutorialSeen?: () => void; country?: string;
 }) {
   const [phase, setPhase] = useState<Phase>("mood");
   const [moods, setMoods] = useState<string[]>([]);
@@ -34,6 +34,13 @@ export function TonightFlow({
 
   const hues: MoodHue[] = moods.map((w) => hueOf(w));
   const serviceNames = services.map(serviceLabel);
+
+  // The deck + thinking screens are immersive (full-screen, no tab bar) like the design;
+  // the mood/end/edge screens are not. Tell the shell so it can hide/show the tab bar.
+  useEffect(() => {
+    onImmersive?.(phase === "thinking" || phase === "deck");
+    return () => onImmersive?.(false);
+  }, [phase, onImmersive]);
 
   const deal = async (picked: string[], who: string) => {
     setMoods(picked);
