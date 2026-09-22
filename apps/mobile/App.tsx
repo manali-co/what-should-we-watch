@@ -70,6 +70,8 @@ function Root() {
   const [showAccount, setShowAccount] = useState(false);
   const [gate, setGate] = useState<GateFeature | null>(null);
   const [signInOverlay, setSignInOverlay] = useState(false);
+  // The deck/thinking flow is full-screen (tab bar hidden), matching the design.
+  const [immersive, setImmersive] = useState(false);
   // Clerk's native biometric sign-in (Face ID / Touch ID). No custom app-lock: a valid
   // session flows straight to home; Face ID is an optional faster re-sign-in, enrolled once.
   const { getAvailability, enroll } = useBiometricCredentials();
@@ -208,6 +210,7 @@ function Root() {
                 onDecided={onDecided}
                 onOpenSettings={() => setTab("settings")}
                 onOpenShortlist={() => setTab("shortlist")}
+                onImmersive={setImmersive}
                 firstTime={decisions === 0}
                 userInitial={userInitial}
                 userName={displayName || (user?.firstName ?? undefined)}
@@ -250,15 +253,17 @@ function Root() {
               />
             )}
           </View>
-          <View style={styles.nav}>
-            {([["tonight", "Tonight"], ["shortlist", `Shortlist${shortlist.length ? ` ${shortlist.length}` : ""}`], ["taste", "Taste"], ["settings", "Settings"]] as [Tab, string][]).map(
-              ([key, label]) => (
-                <Pressable key={key} testID={`tab-${key}`} style={[styles.navItem, tab === key && styles.navItemOn]} onPress={() => setTab(key)}>
-                  <Text style={[styles.navText, tab === key && styles.navTextOn]}>{label}</Text>
-                </Pressable>
-              ),
-            )}
-          </View>
+          {immersive ? null : (
+            <View style={styles.nav}>
+              {([["tonight", "Tonight"], ["shortlist", `Shortlist${shortlist.length ? ` ${shortlist.length}` : ""}`], ["taste", "Taste"], ["settings", "Settings"]] as [Tab, string][]).map(
+                ([key, label]) => (
+                  <Pressable key={key} testID={`tab-${key}`} style={[styles.navItem, tab === key && styles.navItemOn]} onPress={() => setTab(key)}>
+                    <Text style={[styles.navText, tab === key && styles.navTextOn]}>{label}</Text>
+                  </Pressable>
+                ),
+              )}
+            </View>
+          )}
           <GateSheet feature={gate} onSignIn={openSignIn} onReset={resetLearned} onClose={() => setGate(null)} />
         </>
       )}

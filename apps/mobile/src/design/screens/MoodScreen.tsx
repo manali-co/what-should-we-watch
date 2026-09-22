@@ -92,7 +92,9 @@ export function MoodScreen({ onDeal, onOpenSettings, onOpenProfile, userInitial,
               size={size}
               selected={on}
               onPress={() => toggle(m.w)}
-              textStyle={{ fontFamily: t.fontFamily.display, fontSize, letterSpacing: -0.2 }}
+              // line-height must follow the overridden fontSize, or the taller display glyphs
+              // get clipped by the Pill text's base line-height (the "text gets cut" bug).
+              textStyle={{ fontFamily: t.fontFamily.display, fontSize, lineHeight: Math.round(fontSize * 1.2), letterSpacing: -0.2 }}
             >
               {m.w}
             </Pill>

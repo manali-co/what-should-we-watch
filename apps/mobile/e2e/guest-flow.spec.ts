@@ -116,6 +116,8 @@ test.describe("deck decisions (web)", () => {
     await dealADeck(page);
     await swipeRight(page, FILMS[0].title);
 
+    // The deck is immersive (tab bar hidden); leave it via the deck's back to the mood screen.
+    await page.getByTestId("deck-back").click();
     await page.getByTestId("tab-shortlist").click();
     await expect(page.getByText(FILMS[0].title).first()).toBeVisible({ timeout: 8_000 });
 
@@ -132,10 +134,8 @@ test.describe("deck decisions (web)", () => {
     await dealADeck(page);
     await swipeRight(page, FILMS[0].title); // decide on the first film
 
-    // Leave and return to the Tonight tab so the flow remounts back to the mood screen.
-    await page.getByTestId("tab-shortlist").click();
-    await page.waitForTimeout(300);
-    await page.getByTestId("tab-tonight").click();
+    // Back out of the immersive deck to the mood screen, then re-deal.
+    await page.getByTestId("deck-back").click();
     await page.waitForTimeout(400);
     // Deal again — the decided film is gone, so wait on one of the others, not FILMS[0].
     if (await page.getByText("cozy", { exact: true }).count()) await page.getByText("cozy", { exact: true }).first().click();
