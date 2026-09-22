@@ -17,16 +17,17 @@ export function SettingsScreen({
   services, onToggleService, onReset,
   onOpenAccount, onSignIn, onGate, onExport, onLogout, onReplayTutorial,
   country = "United States", provider, email, displayName,
+  themePref = "dark", onThemePref,
 }: {
   isGuest?: boolean;
   services: string[]; onToggleService: (id: string) => void; onReset: () => void;
   onOpenAccount: () => void; onSignIn: () => void; onGate: (f: GateFeature) => void;
   onExport?: () => void; onLogout?: () => void; onReplayTutorial?: () => void;
   country?: string; provider?: Provider; email?: string; displayName?: string;
+  themePref?: "system" | "dark" | "light"; onThemePref?: (p: "system" | "dark" | "light") => void;
 }) {
   const t = useTheme();
   const [expanded, setExpanded] = useState(false);
-  const [themePref, setThemePref] = useState("system");
   const [reducedMotion, setReducedMotion] = useState(false);
   const [followUp, setFollowUp] = useState(true);
   const [sync, setSync] = useState(true);
@@ -93,7 +94,7 @@ export function SettingsScreen({
           <Segmented
             options={[{ value: "system", label: "System" }, { value: "dark", label: "Dark" }, { value: "light", label: "Light" }]}
             value={themePref}
-            onChange={setThemePref}
+            onChange={(v) => onThemePref?.(v as "system" | "dark" | "light")}
           />
         </View>
         <ListRow title="Reduce motion" subtitle="Follows the system setting; override here" trailing={<Switch checked={reducedMotion} onChange={setReducedMotion} />} last />
