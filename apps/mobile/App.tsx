@@ -267,6 +267,8 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
                 onGate={setGate}
                 onExport={doExport}
                 onLogout={logout}
+                onDelete={deleteAccount}
+                onOpenTaste={() => setTab("taste")}
                 themePref={themePref}
                 onThemePref={onThemePref}
                 provider={provider}

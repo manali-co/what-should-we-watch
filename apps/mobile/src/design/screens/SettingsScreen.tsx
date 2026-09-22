@@ -2,10 +2,11 @@
 // Ported 1:1 from the design's Settings (Screens.jsx). The gated Sync / Group / Face-ID
 // switches and the guest banner are the gentle guest→member conversion surface.
 import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, TextInput, View } from "react-native";
 import { Avatar, Body, Headline, Screen, TopRow } from "../primitives";
 import { Button, Segmented, Switch } from "../controls";
 import { ListRow, SectionLabel } from "../surfaces";
+import { Sheet } from "../sheet";
 import { useTheme } from "../tokens";
 import { SERVICES } from "../data";
 import type { GateFeature } from "./GateSheet";
@@ -15,19 +16,22 @@ type Provider = "google" | "apple" | "email";
 export function SettingsScreen({
   isGuest = false,
   services, onToggleService, onReset,
-  onOpenAccount, onSignIn, onGate, onExport, onLogout, onReplayTutorial,
+  onOpenAccount, onSignIn, onGate, onExport, onLogout, onDelete, onOpenTaste, onReplayTutorial,
   country = "United States", provider, email, displayName,
   themePref = "dark", onThemePref,
 }: {
   isGuest?: boolean;
   services: string[]; onToggleService: (id: string) => void; onReset: () => void;
   onOpenAccount: () => void; onSignIn: () => void; onGate: (f: GateFeature) => void;
-  onExport?: () => void; onLogout?: () => void; onReplayTutorial?: () => void;
+  onExport?: () => void; onLogout?: () => void; onDelete?: () => void; onOpenTaste?: () => void; onReplayTutorial?: () => void;
   country?: string; provider?: Provider; email?: string; displayName?: string;
   themePref?: "system" | "dark" | "light"; onThemePref?: (p: "system" | "dark" | "light") => void;
 }) {
   const t = useTheme();
   const [expanded, setExpanded] = useState(false);
+  const [sheet, setSheet] = useState<null | "logout" | "delete">(null);
+  const [deleteTyped, setDeleteTyped] = useState("");
+  const closeSheet = () => { setSheet(null); setDeleteTyped(""); };
   const [reducedMotion, setReducedMotion] = useState(false);
   const [followUp, setFollowUp] = useState(true);
   const [sync, setSync] = useState(true);
@@ -111,14 +115,42 @@ export function SettingsScreen({
         ) : null}
 
         <SectionLabel>Your data</SectionLabel>
-        <ListRow title="Taste" subtitle="What we’ve learned, in plain words" chevron onPress={() => {}} />
+        <ListRow title="Taste" subtitle="What we’ve learned, in plain words" chevron onPress={() => onOpenTaste?.()} />
         <ListRow title="Export my data" subtitle="Every decision as a file you own" chevron onPress={gateOr("export", () => onExport?.())} />
         <ListRow title="Reset what we’ve learned" subtitle="Clears decisions and taste on this phone" onPress={onReset} />
-        {member && onLogout ? <ListRow title="Log out" onPress={onLogout} /> : null}
-        <ListRow title="Delete account" destructive onPress={gateOr("delete", onOpenAccount)} last />
+        {member && onLogout ? <ListRow title="Log out" onPress={() => setSheet("logout")} /> : null}
+        <ListRow title="Delete account" destructive onPress={gateOr("delete", () => setSheet("delete"))} last />
 
         <Body tone="tertiary" style={[t.type.caption, { marginTop: t.space[6] }]}>What Should We Watch 0.1.0 · Availability data is checked nightly for your country.</Body>
       </ScrollView>
+
+      {/* Log out — confirm (ported from the design's Settings sheets) */}
+      <Sheet open={sheet === "logout"} title="Log out?" onClose={closeSheet}>
+        <Body>Your shortlist and what we’ve learned stay on this phone. Sign back in any time and they merge with your account.</Body>
+        <View style={{ gap: t.space[2], marginTop: t.space[4] }}>
+          <Button variant="primary" size="lg" full onPress={() => { closeSheet(); onLogout?.(); }}>Log out</Button>
+          <Button variant="ghost" full onPress={closeSheet}>Cancel</Button>
+        </View>
+      </Sheet>
+
+      {/* Delete account — type DELETE to confirm */}
+      <Sheet open={sheet === "delete"} title="Delete your account?" onClose={closeSheet}>
+        <Body>This removes your account, taste, shortlist and every decision from our servers. It can’t be undone. If you might come back, log out instead.</Body>
+        <Body tone="tertiary" style={[t.type.caption, { marginTop: t.space[2] }]}>Type DELETE to confirm.</Body>
+        <TextInput
+          value={deleteTyped}
+          onChangeText={setDeleteTyped}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          placeholder="DELETE"
+          placeholderTextColor={t.color.inkTertiary}
+          style={[t.type.title, { color: t.color.ink, borderBottomWidth: 1, borderBottomColor: t.color.hairlineStrong, paddingVertical: 8, marginTop: 4, letterSpacing: 2 }]}
+        />
+        <View style={{ gap: t.space[2], marginTop: t.space[4] }}>
+          <Button variant="no" size="lg" full disabled={deleteTyped !== "DELETE"} onPress={() => { closeSheet(); onDelete?.(); }}>Delete everything</Button>
+          <Button variant="ghost" full onPress={closeSheet}>Keep my account</Button>
+        </View>
+      </Sheet>
     </Screen>
   );
 }
