@@ -61,8 +61,6 @@ function transitionFor(from: MascotState, to: MascotState): Tr {
   return { ms: 700, ease: EASE.standard, face: 0.75 };
 }
 
-const num = (v: number | undefined, d = 0) => (v == null ? d : v);
-
 export function Mascot({ state = "idle", size = 120, label, style }: { state?: MascotState; size?: number; label?: string; style?: StyleProp<ViewStyle> }) {
   const t = useTheme();
   const s = STATES[state] ?? STATES.idle;
@@ -119,11 +117,11 @@ export function Mascot({ state = "idle", size = 120, label, style }: { state?: M
     const scan = s.accent === "scan" ? interpolate(loop.value, [0, 0.5, 1], [-(gap + eyeSize) * 0.22, (gap + eyeSize) * 0.22, -(gap + eyeSize) * 0.22]) : 0;
     return {
       transform: [
-        { translateX: scan + (interpolate(m, [0, 1], [num(ep.x), num(en.x)]) / 100) * size },
-        { translateY: (interpolate(m, [0, 1], [num(ep.y), num(en.y)]) / 100) * size },
-        { rotate: `${interpolate(m, [0, 1], [num(ep.rotate), num(en.rotate)])}deg` },
-        { scaleX: interpolate(m, [0, 1], [num(ep.sx, 1), num(en.sx, 1)]) },
-        { scaleY: interpolate(m, [0, 1], [num(ep.sy, 1), num(en.sy, 1)]) },
+        { translateX: scan + (interpolate(m, [0, 1], [ep.x ?? 0, en.x ?? 0]) / 100) * size },
+        { translateY: (interpolate(m, [0, 1], [ep.y ?? 0, en.y ?? 0]) / 100) * size },
+        { rotate: `${interpolate(m, [0, 1], [ep.rotate ?? 0, en.rotate ?? 0])}deg` },
+        { scaleX: interpolate(m, [0, 1], [ep.sx ?? 1, en.sx ?? 1]) },
+        { scaleY: interpolate(m, [0, 1], [ep.sy ?? 1, en.sy ?? 1]) },
       ],
     };
   });
@@ -133,10 +131,10 @@ export function Mascot({ state = "idle", size = 120, label, style }: { state?: M
     const m = morphFace.value;
     return {
       transform: [
-        { translateX: (interpolate(m, [0, 1], [num(mp.x), num(mn.x)]) / 100) * size },
-        { translateY: (interpolate(m, [0, 1], [num(mp.y), num(mn.y)]) / 100) * size },
-        { rotate: `${interpolate(m, [0, 1], [num(mp.rotate), num(mn.rotate)])}deg` },
-        { scale: interpolate(m, [0, 1], [num(mp.scale, 1), num(mn.scale, 1)]) },
+        { translateX: (interpolate(m, [0, 1], [mp.x ?? 0, mn.x ?? 0]) / 100) * size },
+        { translateY: (interpolate(m, [0, 1], [mp.y ?? 0, mn.y ?? 0]) / 100) * size },
+        { rotate: `${interpolate(m, [0, 1], [mp.rotate ?? 0, mn.rotate ?? 0])}deg` },
+        { scale: interpolate(m, [0, 1], [mp.scale ?? 1, mn.scale ?? 1]) },
       ],
     };
   });
@@ -173,11 +171,11 @@ function Disc({ hue, pose, posePrev, lead, leadPrev, dim, dimPrev, d, left, top,
   const anim = useAnimatedStyle(() => {
     const m = morph.value;
     // Interpolate the whole pose from where we were to where we're going.
-    const px = interpolate(m, [0, 1], [num(posePrev.x), num(pose.x)]);
-    const py = interpolate(m, [0, 1], [num(posePrev.y), num(pose.y)]);
-    const psx = interpolate(m, [0, 1], [num(posePrev.sx, 1), num(pose.sx, 1)]);
-    const psy = interpolate(m, [0, 1], [num(posePrev.sy, 1), num(pose.sy, 1)]);
-    const prot = interpolate(m, [0, 1], [num(posePrev.rotate), num(pose.rotate)]);
+    const px = interpolate(m, [0, 1], [posePrev.x ?? 0, pose.x ?? 0]);
+    const py = interpolate(m, [0, 1], [posePrev.y ?? 0, pose.y ?? 0]);
+    const psx = interpolate(m, [0, 1], [posePrev.sx ?? 1, pose.sx ?? 1]);
+    const psy = interpolate(m, [0, 1], [posePrev.sy ?? 1, pose.sy ?? 1]);
+    const prot = interpolate(m, [0, 1], [posePrev.rotate ?? 0, pose.rotate ?? 0]);
     const leadScale = interpolate(m, [0, 1], [leadPrev ? 1.14 : 1, lead ? 1.14 : 1]);
     const opacity = interpolate(m, [0, 1], [dimPrev ? 0.78 : 0.92, dim ? 0.78 : 0.92]);
     // Idle loop (drift + blob), phase-shifted per disc, layered on top of the posed transform.
