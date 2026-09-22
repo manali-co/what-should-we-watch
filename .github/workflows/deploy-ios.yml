@@ -11,6 +11,10 @@ on:
       - ".github/workflows/deploy-ios.yml"
   workflow_dispatch: {}
 
+# Least privilege: the deploy only reads the repo and talks to EAS via EXPO_TOKEN.
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-ios
   cancel-in-progress: false
@@ -29,7 +33,7 @@ jobs:
         with:
           node-version: 20
       - name: Install EAS CLI
-        run: npm install -g eas-cli
+        run: npm install -g eas-cli@24.7.0
       - name: Install dependencies
         run: npm install --legacy-peer-deps --no-audit --no-fund
       - name: Build + submit to TestFlight
