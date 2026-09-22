@@ -1,7 +1,7 @@
 // Deck — the swipe deck, ported 1:1 from the design's Deck.jsx.
 // Physics: rotation = dx*0.06deg (max 12), commit at 96px or 800px/s, fly-out, stamp fades 32→96px.
 import { useEffect, useRef, useState } from "react";
-import { Animated, Linking, PanResponder, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Linking, PanResponder, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { Micro, Screen, TopRow } from "../primitives";
 import { Button, Pill } from "../controls";
@@ -12,7 +12,6 @@ import { formatRuntime, serviceLabel } from "../../films";
 import { Kind, Action, THRESH, actionFor, isKept, isTap, shouldCommit, swipeDirection } from "../deckLogic";
 
 const ROT = 0.06, ROT_MAX = 12;
-const W = 390, H = 844;
 const TINTS = ["#3E6B6F", "#8A5A3C", "#5B3F3A", "#4F6A5A", "#6C4B6E", "#5C5A6E", "#3A4A5E", "#4A6B8A", "#7A5C48", "#8A7A4A"];
 
 type Reaction = "loved" | "okay" | "disliked";
@@ -30,6 +29,10 @@ export function DeckScreen({ films, moods, onDecision, onDone, onBack, firstTime
   firstTime?: boolean; onSeenTutorial?: () => void;
 }) {
   const t = useTheme();
+  // Real device size, not a hardcoded 390×844 — so the fling distance, rotation and card
+  // height are right on every phone (they were visibly off on anything but a base iPhone).
+  const { width: W, height: H } = useWindowDimensions();
+  const cardH = Math.max(360, Math.min(t.size.cardHeight, H - 300));
   const [index, setIndex] = useState(0);
   const [coach, setCoach] = useState(!!firstTime);
   const dismissCoach = () => { setCoach((c) => { if (c) onSeenTutorial?.(); return false; }); };
@@ -162,16 +165,16 @@ export function DeckScreen({ films, moods, onDecision, onDone, onBack, firstTime
         }
       />
 
-      <View style={{ marginTop: t.space[5], height: t.size.cardHeight }}>
+      <View style={{ marginTop: t.space[5], height: cardH }}>
         {next ? (
-          <Animated.View key={next.id} style={{ position: "absolute", left: 0, right: 0, top: 0, height: t.size.cardHeight, transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }, { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) }] }}>
+          <Animated.View key={next.id} style={{ position: "absolute", left: 0, right: 0, top: 0, height: cardH, transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }, { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) }] }}>
             <PosterCard film={toCard(next, index + 1)} compact />
           </Animated.View>
         ) : null}
         <Animated.View
           key={film.id}
           {...pan.panHandlers}
-          style={{ position: "absolute", left: 0, right: 0, top: 0, height: t.size.cardHeight, transform: [{ translateX: pos.x }, { translateY: pos.y }, { rotate }] }}
+          style={{ position: "absolute", left: 0, right: 0, top: 0, height: cardH, transform: [{ translateX: pos.x }, { translateY: pos.y }, { rotate }] }}
         >
           <PosterCard film={toCard(film, index)} />
           {(["like", "nope", "maybe", "watched"] as Kind[]).map((k) => (
