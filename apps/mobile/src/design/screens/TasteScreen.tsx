@@ -44,7 +44,9 @@ export function TasteScreen({ showNudge = false, onNudgeSignIn, onNudgeDismiss, 
     <Screen>
       <TopRow left={<Headline size="m">Taste</Headline>} />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: t.space[9] }} showsVerticalScrollIndicator={false}>
-        <ConvertNudge kind="taste" visible={showNudge} onSignIn={onNudgeSignIn ?? (() => {})} onDismiss={onNudgeDismiss ?? (() => {})} />
+        {/* Only nudge once there's taste worth keeping — its copy ("we've learned a fair bit
+            about you") would be untrue on the cold-start screen. */}
+        <ConvertNudge kind="taste" visible={showNudge && !cold} onSignIn={onNudgeSignIn ?? (() => {})} onDismiss={onNudgeDismiss ?? (() => {})} />
 
         {status === "loading" ? (
           <View style={{ paddingTop: t.space[8], alignItems: "center", gap: t.space[4] }}>

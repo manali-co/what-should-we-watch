@@ -98,6 +98,8 @@ test.describe("guest flow (web)", () => {
     // A brand-new viewer must see the truthful empty state, never invented data.
     await expect(page.getByText("We’re still learning your taste.")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("With Jo")).toHaveCount(0);
+    // …and the "we've learned a fair bit about you" nudge must not appear before we have.
+    await expect(page.getByText("This is only on this phone")).toHaveCount(0);
   });
 });
 
