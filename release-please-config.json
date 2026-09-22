@@ -3,7 +3,6 @@
   "separate-pull-requests": true,
   "packages": {
     "services/api": { "release-type": "python", "component": "api" },
-    "packages/recs": { "release-type": "python", "component": "recs" },
-    "apps/mobile": { "release-type": "node", "component": "mobile" }
+    "packages/recs": { "release-type": "python", "component": "recs" }
   }
 }
