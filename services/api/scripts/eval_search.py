@@ -21,44 +21,26 @@ from __future__ import annotations
 import argparse
 import json
 import statistics
-import sys
 import time
 from pathlib import Path
 from typing import Any
 
-# The eval core lives in packages/recs (pure, not vendored into the deploy zip).
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "packages" / "recs" / "src"))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-
+from _eval_common import build_judge, clients  # noqa: E402
 from wsww_recs.eval import metrics as M  # noqa: E402
 from wsww_recs.eval.judge import build_judge_prompt, parse_judgments  # noqa: E402
 from wsww_recs.eval.queries import benchmark  # noqa: E402
-
-
-def _clients(judge_deployment: str) -> tuple[Any, Any, Any]:
-    """Returns (candidates_fn, embed_fn, judge_fn) wired to real Azure services."""
-    from wsww_api.db import get_raw_container
-    from wsww_api.recs_adapter import AzureEmbedder, AzureRanker, build_openai_client
-    from wsww_api.recs_engine import RecsEngine
-    from wsww_api.settings import get_settings
-
-    s = get_settings()
-    if not s.openai_endpoint:
-        raise SystemExit("WSWW_OPENAI_ENDPOINT is not set — cannot embed or judge.")
-    client = build_openai_client(s.openai_endpoint)
-    embedder = AzureEmbedder(client, s.embedding_deployment)
-    ranker = AzureRanker(client, s.ranking_deployment)
-    eng = RecsEngine(get_raw_container("catalog"), embedder, ranker)
-    judge = AzureRanker(client, judge_deployment or s.ranking_deployment)
-    return eng, embedder, judge
 
 
 def _grades_in_rank_order(candidates: list[dict[str, Any]], by_id: dict[str, int]) -> list[int]:
     return [by_id.get(str(c["id"]), 0) for c in candidates]
 
 
-def run(k: int, country: str, limit: int | None, judge_deployment: str) -> dict[str, Any]:
-    eng, embedder, judge = _clients(judge_deployment)
+def run(k: int, country: str, limit: int | None,
+        judge_model: str, judge_effort: str, judge_deployment: str) -> dict[str, Any]:
+    c = clients()
+    eng, embedder = c["engine"], c["embedder"]
+    judge, judge_label = build_judge(
+        c["client"], c["settings"], judge_model, judge_effort, judge_deployment)
     queries = benchmark()
     if limit:
         queries = queries[:limit]
@@ -92,7 +74,7 @@ def run(k: int, country: str, limit: int | None, judge_deployment: str) -> dict[
 
     scored = [r for r in per_query if not r.get("empty")]
     return {
-        "k": k, "judge": judge_deployment, "n_queries": len(queries),
+        "k": k, "judge": judge_label, "n_queries": len(queries),
         "overall": _aggregate(scored),
         "by_shape": {sh: _aggregate([r for r in scored if r["shape"] == sh])
                      for sh in ("single", "combo", "custom")},
@@ -134,11 +116,14 @@ def main() -> None:
     ap.add_argument("--country", default="us")
     ap.add_argument("--limit", type=int, default=0, help="cap #queries (0 = full benchmark)")
     ap.add_argument("--judge", default="", help="Azure judge deployment (else ranking one)")
+    ap.add_argument("--judge-model", default="", help="OpenAI judge, e.g. gpt-6-astra (needs key)")
+    ap.add_argument("--judge-effort", default="low", help="reasoning effort (OpenAI judge)")
     ap.add_argument("--out", default="", help="dir to write the full JSON report")
     args = ap.parse_args()
 
     t0 = time.time()
-    report = run(args.k, args.country, args.limit or None, args.judge)
+    report = run(args.k, args.country, args.limit or None,
+                 args.judge_model, args.judge_effort, args.judge)
     report["seconds"] = round(time.time() - t0, 1)
     _print_summary(report)
     if args.out:
