@@ -5,11 +5,16 @@ user id once Apple/Google sign-in ships. With no device id or no recs engine, it
 degrades to an anonymous popularity deck."""
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Query, Request
 
 from ._common import deps_of
 
 router = APIRouter(tags=["catalog"])
+# The recs paths never fail the request (they fall back), but the failure MUST be visible
+# in App Insights — silent fallbacks are how deck-intelligence bugs went unnoticed.
+log = logging.getLogger("wsww.catalog")
 
 
 def _identity(request: Request) -> str:
@@ -68,7 +73,7 @@ async def deck(
                     deps.taste.set_notes(device, result.taste_notes)
                 return {"films": result.films}
         except Exception:  # noqa: BLE001 - never fail the deck; fall back to popularity
-            pass
+            log.exception("deck recs failed (moods=%s) — falling back to popularity", mood_list)
 
     return {"films": deps.catalog.deck(country.lower(), svc, limit)}
 
@@ -139,4 +144,6 @@ async def results(request: Request) -> dict[str, object]:
         res = deps.recs.rank_shortlist(req)
         return {"films": res.films, "verdict": res.verdict}
     except Exception:  # noqa: BLE001 - never fail results; hand back the original order
+        log.exception("results ranking failed (kept=%d, participants=%d) — kept order",
+                      len(kept), len(participants))
         return {"films": kept, "verdict": ""}
