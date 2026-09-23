@@ -2,6 +2,8 @@
 tests never import Azure SDKs."""
 from __future__ import annotations
 
+from typing import Any
+
 from .auth.jwks import HttpJwks, verify_apple, verify_google
 from .auth.tokens import TokenSigner
 from .deps import Deps
@@ -57,12 +59,24 @@ def _build_recs(settings: Settings) -> object | None:
     from .recs_engine import RecsEngine
 
     client = build_openai_client(settings.openai_endpoint)
-    group_deployment = settings.group_ranking_deployment or settings.ranking_deployment
+    # Strong ranker for groups + consolidation: OpenAI-direct (e.g. GPT-6 Astra) when a key
+    # + model are set (Azure lacks quota for frontier models), else the Azure deployment.
+    if settings.openai_api_key and settings.group_ranking_model:
+        from .recs_adapter import OpenAIRanker, build_openai_direct_client
+
+        group_ranker: Any = OpenAIRanker(
+            build_openai_direct_client(settings.openai_api_key),
+            settings.group_ranking_model,
+            settings.group_ranking_effort,
+        )
+    else:
+        group_dep = settings.group_ranking_deployment or settings.ranking_deployment
+        group_ranker = AzureRanker(client, group_dep)
     return RecsEngine(
         get_raw_container("catalog"),
         AzureEmbedder(client, settings.embedding_deployment),
         AzureRanker(client, settings.ranking_deployment),
-        AzureRanker(client, group_deployment),
+        group_ranker,
     )
 
 

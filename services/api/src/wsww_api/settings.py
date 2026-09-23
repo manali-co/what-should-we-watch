@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     ranking_deployment: str = "gpt-5.4-mini"
     # Stronger model for group ranking + taste consolidation; empty => reuse ranking_deployment.
     group_ranking_deployment: str = ""
+    # OpenAI-direct fallback for the strong ranker (Azure often lacks quota for frontier
+    # models like GPT-6 "Astra"). When both are set, the group ranker uses OpenAI directly.
+    openai_api_key: str = ""
+    group_ranking_model: str = ""       # OpenAI model id, e.g. "gpt-6"
+    group_ranking_effort: str = "low"   # reasoning effort: low | medium | high
     clerk_issuer: str = ""
 
 
