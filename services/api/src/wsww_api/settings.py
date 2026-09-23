@@ -1,5 +1,6 @@
 """Runtime configuration loaded from WSWW_* environment variables."""
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -25,7 +26,7 @@ class Settings(BaseSettings):
     # models like GPT-6 "Astra"). When both are set, the group ranker uses OpenAI directly.
     openai_api_key: str = ""
     group_ranking_model: str = ""       # OpenAI model id, e.g. "gpt-6"
-    group_ranking_effort: str = "low"   # reasoning effort: low | medium | high
+    group_ranking_effort: Literal["low", "medium", "high"] = "low"  # reasoning effort
     clerk_issuer: str = ""
 
 
