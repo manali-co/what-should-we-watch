@@ -51,7 +51,9 @@ def vibe_line(client: AzureOpenAI, deployment: str, doc: dict[str, Any]) -> str:
         model=deployment, messages=[{"role": "user", "content": prompt}],
         max_completion_tokens=200,
     )
-    return (r.choices[0].message.content or "").strip().replace("\n", " ")
+    # Normalise whitespace; cap generously (target is ~30 words) as a runaway guard only —
+    # the line can render on the card, so keep whole phrases rather than hard-cut at 30.
+    return " ".join((r.choices[0].message.content or "").split()[:60])
 
 
 def doc_text(doc: dict[str, Any]) -> str:
