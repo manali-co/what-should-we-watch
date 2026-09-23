@@ -32,7 +32,7 @@ export function DeckScreen({ films, moods, onDecision, onDone, onBack, firstTime
   // Real device size, not a hardcoded 390×844 — so the fling distance, rotation and card
   // height are right on every phone (they were visibly off on anything but a base iPhone).
   const { width: W, height: H } = useWindowDimensions();
-  const cardH = Math.max(360, Math.min(t.size.cardHeight, H - 300));
+  const cardH = Math.min(t.size.cardHeight, H - 300);
   const [index, setIndex] = useState(0);
   const [coach, setCoach] = useState(!!firstTime);
   const dismissCoach = () => { setCoach((c) => { if (c) onSeenTutorial?.(); return false; }); };
