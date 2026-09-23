@@ -44,9 +44,8 @@ class CatalogRepo:
             )
             if sub is None:
                 continue
+            # No-poster films stay in the deck (the app renders a purpose-built card for them).
             poster = (r.get("poster") or {}).get("url") or ""
-            if not poster:
-                continue
             overview = r.get("overview") or ""
             cards.append(
                 {
@@ -57,7 +56,7 @@ class CatalogRepo:
                     "service": sub.get("service"),
                     "link": sub.get("link") or "",
                     "leavingInDays": _leaving_in_days(sub.get("expiresOn")),
-                    "posterUrl": poster,
+                    "posterUrl": poster or None,
                     "why": overview[:160] + ("…" if len(overview) > 160 else ""),
                     "rating": r.get("rating"),
                 }

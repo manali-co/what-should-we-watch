@@ -2,7 +2,7 @@ from wsww_api.db import InMemoryContainer
 from wsww_api.repositories import CatalogRepo
 
 
-def test_deck_filters_by_service_and_needs_poster() -> None:
+def test_deck_filters_by_service_and_keeps_no_poster() -> None:
     c = InMemoryContainer()
     repo = CatalogRepo(c)
     c.upsert({"id": "1", "_pk": "us", "country": "us", "title": "A", "year": 2020, "rating": 80,
@@ -16,7 +16,10 @@ def test_deck_filters_by_service_and_needs_poster() -> None:
               "availability": [{"service": "netflix", "type": "subscription", "link": "l"}]})
     got = repo.deck("us", ["netflix"], 10)
     titles = {f["title"] for f in got}
-    assert titles == {"A"}  # B is hulu-only, NoPoster has no image
+    # B is hulu-only (filtered out); NoPoster stays in — a missing image is not a reason
+    # to hide an available film, it renders a purpose-built card with posterUrl=None.
+    assert titles == {"A", "NoPoster"}
+    assert next(f["posterUrl"] for f in got if f["title"] == "NoPoster") is None
 
 
 def test_deck_no_service_filter_returns_all_with_poster() -> None:

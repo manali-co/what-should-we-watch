@@ -31,13 +31,13 @@ def _cosmos_container():
     return client.get_database_client(db_name).get_container_client("catalog")
 
 
-def run(pages: int = 2, country: str = "us") -> dict[str, int]:
+def run(pages: int = 10, country: str = "us") -> dict[str, int]:
     key = os.environ["WSWW_STREAMING_KEY"]
     client = StreamingClient(key)
     container = _cosmos_container()
 
     seen: set[str] = set()
-    stats = {"fetched": 0, "written": 0, "skipped_no_poster": 0}
+    stats = {"fetched": 0, "written": 0, "skipped_no_avail": 0}
     now = datetime.now(timezone.utc).isoformat()
 
     for catalog in US_CATALOGS:
@@ -51,8 +51,10 @@ def run(pages: int = 2, country: str = "us") -> dict[str, int]:
                 doc = to_catalog_doc(show, country)
             except KeyError:
                 continue
-            if not doc["poster"]["url"] or not doc["availability"]:
-                stats["skipped_no_poster"] += 1
+            # Keep no-poster films: they widen the pool and render a purpose-built card.
+            # Only films with nowhere to stream are dropped.
+            if not doc["availability"]:
+                stats["skipped_no_avail"] += 1
                 continue
             doc["updatedAt"] = now
             container.upsert_item(doc)
@@ -62,7 +64,7 @@ def run(pages: int = 2, country: str = "us") -> dict[str, int]:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--pages", type=int, default=2, help="pages per catalog (20 shows/page)")
+    ap.add_argument("--pages", type=int, default=10, help="pages per catalog (20 shows/page)")
     ap.add_argument("--country", default="us")
     args = ap.parse_args()
     stats = run(pages=args.pages, country=args.country)

@@ -238,7 +238,10 @@ class RecsEngine:
             if wanted is not None:
                 avail = [a for a in avail if a.get("service") in wanted]
             sub = next((a for a in avail if a.get("type") == "subscription"), None) or (avail[0] if avail else None)
-            if sub is None or not (r.get("poster") or {}).get("url"):
+            # No-poster films stay in the pool (they render a purpose-built card in the app);
+            # only unavailable films are useless. Excluding them here was shrinking the
+            # post-mood candidate pool — a leak, not a feature.
+            if sub is None:
                 continue
             r["_service"] = sub.get("service")
             r["_link"] = sub.get("link") or ""
