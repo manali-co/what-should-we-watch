@@ -7,11 +7,16 @@ Auth to Cosmos is via DefaultAzureCredential (managed identity in cloud, az logi
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 from datetime import UTC, datetime
 
+from azure.cosmos.exceptions import CosmosResourceNotFoundError
+
 from .client import StreamingClient
 from .transform import to_catalog_doc
+
+log = logging.getLogger("wsww.catalog.ingest")
 
 # Subscription catalogs for the six primary US services (v0 scope).
 US_CATALOGS = [
@@ -38,7 +43,10 @@ def _carry_embedding(container: object, doc: dict) -> bool:
     Returns True when carried over."""
     try:
         existing = container.read_item(item=doc["id"], partition_key=doc["country"])  # type: ignore[attr-defined]
-    except Exception:  # noqa: BLE001 - not found / transient -> treat as new, re-embed
+    except CosmosResourceNotFoundError:
+        return False  # genuinely new title -> embed it
+    except Exception as e:  # noqa: BLE001 - transient read error: re-embed rather than crash the run
+        log.warning("catalog read id=%s failed (%s); re-embedding", doc.get("id"), type(e).__name__)
         return False
     if not existing.get("embedding"):
         return False
