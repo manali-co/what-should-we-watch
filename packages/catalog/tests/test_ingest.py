@@ -1,4 +1,5 @@
 import pytest
+from azure.cosmos.exceptions import CosmosResourceNotFoundError
 from wsww_catalog.ingest import _carry_embedding
 
 
@@ -9,7 +10,7 @@ class FakeContainer:
     def read_item(self, item: str, partition_key: str):
         if item in self._items:
             return self._items[item]
-        raise KeyError("NotFound")
+        raise CosmosResourceNotFoundError(status_code=404, message="NotFound")
 
 
 def _doc(**over):
