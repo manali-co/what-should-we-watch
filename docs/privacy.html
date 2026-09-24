@@ -37,8 +37,12 @@
   </ul>
   <p><strong>A device identifier.</strong> In guest mode we use a random per-device id (not tied to your
   identity) so your choices and shortlist work on that device. Much guest data also stays on the device itself.</p>
+  <p><strong>Basic technical logs.</strong> To keep the app running and secure, our systems record diagnostic
+  data — such as the requests made, errors, and performance timings — via Microsoft Azure Application Insights.
+  This is operational data used to run and debug the service, not to identify you.</p>
   <p>We do <strong>not</strong> collect precise location, contacts, photos, health data, or your device’s
-  advertising identifier.</p>
+  advertising identifier. Face ID / Touch ID, if you enable it, is handled entirely by your device’s operating
+  system — we never receive your biometric data.</p>
 
   <h2>How we use your information</h2>
   <ul>
@@ -54,7 +58,7 @@
   <p>We use a small set of processors that handle data on our behalf under their own security terms:</p>
   <ul>
     <li><strong>Clerk</strong> — sign-in and account management.</li>
-    <li><strong>Microsoft Azure</strong> — hosting, database, and AI (including Azure OpenAI) in our cloud account.</li>
+    <li><strong>Microsoft Azure</strong> — hosting, database, AI (including Azure OpenAI), and diagnostics/monitoring (Application Insights) in our cloud account.</li>
     <li><strong>OpenAI</strong> — additional model inference used for ranking, via API. Not used to train models on your data.</li>
     <li><strong>Movie of the Night (Streaming Availability API)</strong> — the film catalog and streaming-availability data (this is data <em>we receive</em>, not your personal data).</li>
   </ul>
