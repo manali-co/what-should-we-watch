@@ -51,7 +51,13 @@ def run(k: int, country: str, limit: int | None,
         vector = embedder.embed(text)
         cands = eng._candidates(country, [], vector, k)  # noqa: SLF001 - eval reaches in deliberately
         if not cands:
-            per_query.append({"id": q.id, "shape": q.shape, "n": 0, "empty": True})
+            # A total retrieval miss IS an index failure — score it zero, don't drop it,
+            # or the aggregates hide the worst cases.
+            per_query.append({
+                "id": q.id, "shape": q.shape, "n": 0, "empty": True,
+                "missing_judgments": 0, "p_at_5": 0.0, "p_at_10": 0.0,
+                "ndcg_at_10": 0.0, "mrr": 0.0, "grade_hist": {3: 0, 2: 0, 1: 0, 0: 0}, "top": [],
+            })
             continue
         judgments = parse_judgments(judge.rank(build_judge_prompt(q.moods, cands)))
         by_id = {j.id: j.grade for j in judgments}
@@ -72,11 +78,12 @@ def run(k: int, country: str, limit: int | None,
             ],
         })
 
-    scored = [r for r in per_query if not r.get("empty")]
+    # Empty retrievals are scored zero and kept in the aggregates (they're real failures).
     return {
-        "k": k, "judge": judge_label, "n_queries": len(queries),
-        "overall": _aggregate(scored),
-        "by_shape": {sh: _aggregate([r for r in scored if r["shape"] == sh])
+        "k": k, "judge": judge_label, "country": country, "n_queries": len(queries),
+        "n_empty": sum(1 for r in per_query if r.get("empty")),
+        "overall": _aggregate(per_query),
+        "by_shape": {sh: _aggregate([r for r in per_query if r["shape"] == sh])
                      for sh in ("single", "combo", "custom")},
         "queries": per_query,
     }
@@ -102,9 +109,8 @@ def _print_summary(report: dict[str, Any]) -> None:
                   f"{a['ndcg_at_10']:>7} {a['mrr']:>5}")
     print(f"{'ALL':<8} {o['n']:>3}  {o['p_at_5']:>5} {o['p_at_10']:>5} "
           f"{o['ndcg_at_10']:>7} {o['mrr']:>5}")
-    # Worst queries — where the index is failing hardest.
-    worst = sorted((r for r in report["queries"] if not r.get("empty")),
-                   key=lambda r: r["ndcg_at_10"])[:5]
+    # Worst queries — where the index is failing hardest (empty retrievals included).
+    worst = sorted(report["queries"], key=lambda r: r["ndcg_at_10"])[:5]
     print("\nweakest vibes (lowest nDCG@10):")
     for r in worst:
         print(f"  {r['ndcg_at_10']:.2f}  {r['id']}  (grades {r['grade_hist']})")

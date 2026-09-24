@@ -39,7 +39,11 @@ _FOCUS_IDS = {
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b, strict=False))
+    # Dimension mismatch (e.g. a record from an older embedding deployment) would make a
+    # truncated dot product with full-length norms — an invalid score. Reject it.
+    if len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(y * y for y in b))
     return dot / (na * nb) if na and nb else 0.0
@@ -62,9 +66,10 @@ def _vibe_line(client: Any, deployment: str, film: dict[str, Any]) -> str:
 
 
 def _sample(container: Any, n: int, country: str) -> list[dict[str, Any]]:
+    # ORDER BY id makes the sample deterministic so A/B runs are comparable.
     rows = list(container.query_items(
         query=("SELECT TOP @n c.id, c.title, c.year, c.genres, c.overview, c.embedding "
-               "FROM c WHERE c.country = @country AND IS_ARRAY(c.embedding)"),
+               "FROM c WHERE c.country = @country AND IS_ARRAY(c.embedding) ORDER BY c.id"),
         parameters=[{"name": "@n", "value": n}, {"name": "@country", "value": country}],
         partition_key=country,
     ))
@@ -107,8 +112,9 @@ def run(n: int, country: str, judge_model: str, judge_effort: str,
             "old": _metrics_for_ranking(old_rank, grades),
             "new": _metrics_for_ranking(new_rank, grades),
         })
-    return {"n_films": len(films), "judge": judge_label, "queries": per_query,
-            "summary": _summarise(per_query),
+    return {"n_films": len(films), "judge": judge_label, "country": country,
+            "film_ids": [str(f["id"]) for f in films],  # record the sample for reproducibility
+            "queries": per_query, "summary": _summarise(per_query),
             "vibe_samples": [{"title": f["title"], "vibe": f["_vibe_line"]} for f in films[:8]]}
 
 
@@ -128,7 +134,7 @@ def _summarise(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--n", type=int, default=60, help="films sampled for the A/B")
+    ap.add_argument("--n", type=int, default=60, help="films sampled for the A/B (1-500)")
     ap.add_argument("--country", default="us")
     ap.add_argument("--judge", default="", help="Azure judge deployment (else ranking one)")
     ap.add_argument("--judge-model", default="", help="OpenAI judge, e.g. gpt-6-astra (needs key)")
@@ -136,8 +142,9 @@ def main() -> None:
     ap.add_argument("--out", default="")
     args = ap.parse_args()
 
+    n = max(1, min(args.n, 500))  # bound the sample before making per-film Azure calls
     t0 = time.time()
-    report = run(args.n, args.country, args.judge_model, args.judge_effort, args.judge)
+    report = run(n, args.country, args.judge_model, args.judge_effort, args.judge)
     report["seconds"] = round(time.time() - t0, 1)
     s = report["summary"]
     print(f"\n=== #41 embed A/B (n={report['n_films']} films, judge={report['judge']}, "
