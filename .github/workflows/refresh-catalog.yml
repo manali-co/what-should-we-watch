@@ -1,0 +1,73 @@
+name: Refresh catalog
+
+# Keeps the Cosmos catalog fresh (#32). Re-ingests the latest titles from Movie of the
+# Night and vibe-embeds any NEW ones (existing embeddings are left alone). MOTN updates
+# daily; this pulls the churn so the deck isn't drawing from a stale one-time snapshot.
+#
+# ONE-TIME SETUP required before this can run (see PR / issue #32):
+#   1. Repo secret WSWW_STREAMING_KEY = the Movie of the Night (RapidAPI) key.
+#   2. Grant the deploy service principal (vars.AZURE_CLIENT_ID) two DEV-only data-plane
+#      roles — it only has control-plane/deploy rights today:
+#        - Cosmos DB Built-in Data Contributor on wsww-dev-cosmos
+#        - Cognitive Services OpenAI User on wsww-dev-ai
+#      Without these the job 403s on Cosmos writes / embedding calls.
+
+on:
+  schedule:
+    - cron: "0 8 * * *" # daily 08:00 UTC
+  workflow_dispatch:
+    inputs:
+      pages:
+        description: "pages per catalog (20 titles/page)"
+        default: "10"
+      force_reembed:
+        description: "re-embed ALL docs (plot->vibe migration), not just new ones"
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: refresh-catalog
+  cancel-in-progress: false
+
+env:
+  WSWW_COSMOS_ENDPOINT: https://wsww-dev-cosmos.documents.azure.com:443/
+  WSWW_OPENAI_ENDPOINT: https://wsww-dev-ai.cognitiveservices.azure.com/
+  WSWW_VIBE_DEPLOYMENT: gpt-5.4-mini
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/catalog
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          python-version: "3.12"
+      - name: Ingest latest titles (Movie of the Night)
+        # PAGES via env (never interpolate a free-text input into the run command).
+        # It's numeric; the module's argparse type=int rejects anything non-integer.
+        run: uv run python -m wsww_catalog.ingest --pages "${PAGES:-10}"
+        env:
+          PAGES: ${{ github.event.inputs.pages }}
+          WSWW_STREAMING_KEY: ${{ secrets.WSWW_STREAMING_KEY }}
+          # azure/login sets the OIDC env DefaultAzureCredential uses for Cosmos.
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      - name: Vibe-embed new titles
+        run: uv run python -m wsww_catalog.embeddings ${{ github.event.inputs.force_reembed == 'true' && '--force' || '' }}
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
