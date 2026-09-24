@@ -171,3 +171,31 @@ test.describe("deck decisions (web)", () => {
     expect(/Midnight Cartography|Paper Boats/.test(body)).toBeTruthy();
   });
 });
+
+// The app shell (nav, backgrounds) must follow the active theme — Light/System should not
+// render light screens under dark chrome (issue #61). We assert the tab bar's luminance.
+async function navLuminance(page: Page): Promise<number> {
+  const bg = await page.getByTestId("tab-bar").evaluate((el) => getComputedStyle(el).backgroundColor);
+  const m = bg.match(/(\d+),\s*(\d+),\s*(\d+)/);
+  if (!m) throw new Error(`no rgb in "${bg}"`);
+  return 0.299 * Number(m[1]) + 0.587 * Number(m[2]) + 0.114 * Number(m[3]);
+}
+
+test.describe("theme (web)", () => {
+  test.beforeEach(async ({ page }) => { await mockApi(page); });
+
+  test("dark theme (default) renders a dark app shell", async ({ page }) => {
+    await enterAsGuest(page);
+    await completeOnboarding(page);
+    await expect(page.getByTestId("tab-bar")).toBeVisible();
+    expect(await navLuminance(page)).toBeLessThan(96); // dark chrome
+  });
+
+  test("light theme renders a LIGHT app shell (not dark chrome under light screens)", async ({ page }) => {
+    await page.addInitScript(() => { try { localStorage.setItem("wsww:theme", "light"); } catch {} });
+    await enterAsGuest(page);
+    await completeOnboarding(page);
+    await expect(page.getByTestId("tab-bar")).toBeVisible();
+    expect(await navLuminance(page)).toBeGreaterThan(150); // light chrome — the #61 fix
+  });
+});

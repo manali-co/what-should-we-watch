@@ -7,7 +7,7 @@ import {
 import { ClerkProvider, useAuth, useBiometricCredentials, useUser } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Linking, Platform, Pressable, Share, StatusBar, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { setAuthTokenGetter } from "./src/api";
@@ -16,7 +16,7 @@ import { Film } from "./src/films";
 import { SignIn } from "./src/SignIn";
 
 import { ThemeProvider } from "./src/design/ThemeProvider";
-import { darkColors, fontFamily } from "./src/design/tokens";
+import { darkColors, fontFamily, lightColors, useTheme, type ThemeColors } from "./src/design/tokens";
 import { TonightFlow } from "./src/design/screens/TonightFlow";
 import { WelcomeScreen } from "./src/design/screens/WelcomeScreen";
 import { OnboardingScreen } from "./src/design/screens/OnboardingScreen";
@@ -55,8 +55,15 @@ export default function App() {
   const setTheme = (p: ThemePref) => { setThemePref(p); AsyncStorage.setItem(THEME_KEY, p).catch(() => {}); };
   const system = useColorScheme();
   const themeName = themePref === "system" ? (system === "light" ? "light" : "dark") : themePref;
-  if (!loaded)
-    return <View style={[styles.root, styles.center]}><Text style={styles.loadingText}>…</Text></View>;
+  if (!loaded) {
+    // Pre-ThemeProvider (fonts still loading): derive the ground from the chosen theme.
+    const c = themeName === "light" ? lightColors : darkColors;
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: c.bg }}>
+        <Text style={{ color: c.inkSecondary, fontFamily: fontFamily.body }}>…</Text>
+      </View>
+    );
+  }
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <SafeAreaProvider><ThemeProvider name={themeName}><Root themePref={themePref} onThemePref={setTheme} /></ThemeProvider></SafeAreaProvider>
@@ -65,6 +72,9 @@ export default function App() {
 }
 
 function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (p: ThemePref) => void }) {
+  const t = useTheme();
+  const sh = useMemo(() => makeShellStyles(t.color), [t.color]);
+  const barStyle = t.name === "light" ? "dark-content" : "light-content";
   const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
   const { user } = useUser();
   const userInitial = (user?.firstName?.[0] ?? user?.username?.[0] ?? user?.primaryEmailAddress?.emailAddress?.[0] ?? "").toUpperCase();
@@ -179,13 +189,13 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
   const logout = () => { void signOut(); setShowAccount(false); setStarted(false); setTab("tonight"); };
 
   if (!isLoaded || !ready)
-    return <SafeAreaView style={[styles.root, styles.center]}><Text style={styles.loadingText}>…</Text></SafeAreaView>;
+    return <SafeAreaView style={[sh.root, sh.center]}><Text style={sh.loadingText}>…</Text></SafeAreaView>;
   const inApp = isSignedIn || guest;
   if (!inApp) {
     if (started) return <SignIn onCancel={() => setStarted(false)} />;
     return (
-      <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
-        <StatusBar barStyle="light-content" />
+      <SafeAreaView style={sh.root} edges={["top", "bottom"]}>
+        <StatusBar barStyle={barStyle} />
         <WelcomeScreen onGetStarted={() => setStarted(true)} onContinueAsGuest={continueAsGuest} />
       </SafeAreaView>
     );
@@ -195,8 +205,8 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
   // Account management (members only) takes over the screen.
   if (showAccount && isSignedIn)
     return (
-      <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
-        <StatusBar barStyle="light-content" />
+      <SafeAreaView style={sh.root} edges={["top", "bottom"]}>
+        <StatusBar barStyle={barStyle} />
         <AccountScreen
           name={displayName || user?.firstName || ""}
           email={email}
@@ -214,8 +224,8 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
       </SafeAreaView>
     );
   return (
-    <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={sh.root} edges={["top", "bottom"]}>
+      <StatusBar barStyle={barStyle} />
       {!onboarded ? (
         <OnboardingScreen onDone={finishOnboarding} />
       ) : bioOffer ? (
@@ -279,11 +289,11 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
             )}
           </View>
           {immersive ? null : (
-            <View style={styles.nav}>
+            <View style={sh.nav} testID="tab-bar">
               {([["tonight", "Tonight"], ["shortlist", `Shortlist${shortlist.length ? ` ${shortlist.length}` : ""}`], ["taste", "Taste"], ["settings", "Settings"]] as [Tab, string][]).map(
                 ([key, label]) => (
-                  <Pressable key={key} testID={`tab-${key}`} style={[styles.navItem, tab === key && styles.navItemOn]} onPress={() => setTab(key)}>
-                    <Text style={[styles.navText, tab === key && styles.navTextOn]}>{label}</Text>
+                  <Pressable key={key} testID={`tab-${key}`} style={[sh.navItem, tab === key && sh.navItemOn]} onPress={() => setTab(key)}>
+                    <Text style={[sh.navText, tab === key && sh.navTextOn]}>{label}</Text>
                   </Pressable>
                 ),
               )}
@@ -298,34 +308,37 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
 
 // One-time offer, after sign-in, to enroll Clerk's biometric sign-in for next time.
 function EnableFaceIdCard({ onEnable, onSkip }: { onEnable: () => void; onSkip: () => void }) {
+  const t = useTheme();
   return (
     <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 28, gap: 14 }}>
-      <Text style={{ color: darkColors.ink, fontFamily: fontFamily.display, fontSize: 30, letterSpacing: -0.8 }}>Sign in faster with Face ID?</Text>
-      <Text style={{ color: darkColors.inkSecondary, fontFamily: fontFamily.body, fontSize: 16, lineHeight: 23 }}>
+      <Text style={{ color: t.color.ink, fontFamily: fontFamily.display, fontSize: 30, letterSpacing: -0.8 }}>Sign in faster with Face ID?</Text>
+      <Text style={{ color: t.color.inkSecondary, fontFamily: fontFamily.body, fontSize: 16, lineHeight: 23 }}>
         Next time, use Face ID to sign in instead of Google or an email code. You can turn it off anytime.
       </Text>
       <View style={{ gap: 10, marginTop: 8 }}>
-        <Pressable onPress={onEnable} style={{ backgroundColor: darkColors.accent, borderRadius: 999, paddingVertical: 16, alignItems: "center" }}>
-          <Text style={{ color: darkColors.onAccent, fontFamily: fontFamily.bodySemiBold, fontSize: 16 }}>Set up Face ID</Text>
+        <Pressable onPress={onEnable} style={{ backgroundColor: t.color.accent, borderRadius: 999, paddingVertical: 16, alignItems: "center" }}>
+          <Text style={{ color: t.color.onAccent, fontFamily: fontFamily.bodySemiBold, fontSize: 16 }}>Set up Face ID</Text>
         </Pressable>
         <Pressable onPress={onSkip} style={{ paddingVertical: 14, alignItems: "center" }}>
-          <Text style={{ color: darkColors.inkSecondary, fontFamily: fontFamily.bodyMedium, fontSize: 15 }}>Not now</Text>
+          <Text style={{ color: t.color.inkSecondary, fontFamily: fontFamily.bodyMedium, fontSize: 15 }}>Not now</Text>
         </Pressable>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: darkColors.bg },
+// The app shell (nav, backgrounds, loading) follows the active theme, exactly like the
+// screens do — so Light/System render correctly and aren't dark chrome under light content.
+const makeShellStyles = (c: ThemeColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   center: { alignItems: "center", justifyContent: "center", gap: 16 },
-  lockTitle: { color: darkColors.ink, fontFamily: fontFamily.display, fontSize: 32 },
-  unlock: { backgroundColor: darkColors.accent, borderRadius: 999, paddingVertical: 14, paddingHorizontal: 24 },
-  unlockText: { color: darkColors.onAccent, fontFamily: fontFamily.bodySemiBold, fontSize: 16 },
-  nav: { flexDirection: "row", gap: 4, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10, borderTopWidth: 1, borderTopColor: darkColors.hairline, backgroundColor: darkColors.bg },
+  lockTitle: { color: c.ink, fontFamily: fontFamily.display, fontSize: 32 },
+  unlock: { backgroundColor: c.accent, borderRadius: 999, paddingVertical: 14, paddingHorizontal: 24 },
+  unlockText: { color: c.onAccent, fontFamily: fontFamily.bodySemiBold, fontSize: 16 },
+  nav: { flexDirection: "row", gap: 4, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10, borderTopWidth: 1, borderTopColor: c.hairline, backgroundColor: c.bg },
   navItem: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 999 },
-  navItemOn: { backgroundColor: darkColors.surfaceRaised },
-  navText: { color: darkColors.inkSecondary, fontFamily: fontFamily.bodyMedium, fontSize: 13 },
-  navTextOn: { color: darkColors.ink, fontFamily: fontFamily.bodySemiBold },
-  loadingText: { color: darkColors.inkSecondary, fontFamily: fontFamily.body },
+  navItemOn: { backgroundColor: c.surfaceRaised },
+  navText: { color: c.inkSecondary, fontFamily: fontFamily.bodyMedium, fontSize: 13 },
+  navTextOn: { color: c.ink, fontFamily: fontFamily.bodySemiBold },
+  loadingText: { color: c.inkSecondary, fontFamily: fontFamily.body },
 });
