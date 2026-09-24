@@ -17,25 +17,9 @@ export const theme = {
   moodHues: ["#E8796F", "#AE9BE0", "#4DBFB0", "#E7B15A", "#7FA7D9", "#D98FB0"],
 };
 
-// warm=coral, cerebral=lilac, slow/beauty=lagoon, fun=amber, wistful=sky, tender=rose
-export const MOOD_HUE: Record<string, string> = {
-  cozy: theme.coral, "date night": theme.coral, romance: theme.coral, "cry it out": theme.coral,
-  "feel-good": theme.amber, "big laughs": theme.amber, "brain off": theme.amber, chaotic: theme.amber,
-  "slow burn": theme.lagoon, "gorgeous to look at": theme.lagoon, "quiet and tender": theme.lagoon,
-  "mind-bender": theme.lilac, "dark and twisty": theme.lilac, "cult classic": theme.lilac, "sharp satire": theme.lilac,
-  "rainy Sunday": theme.sky, "comfort rewatch": theme.sky, "coming of age": theme.sky, nostalgic: theme.sky,
-  "true story": theme.rose, "road trip": theme.rose, underdog: theme.rose, whodunit: theme.rose,
-  "properly scary": theme.lilac, "outer space": theme.sky, "a proper epic": theme.amber, "foreign gem": theme.lagoon,
-};
-
-export const hue = (m: string) => MOOD_HUE[m] ?? theme.coral;
-
-export const MOODS = [
-  "feel-good", "slow burn", "cozy", "cry it out", "date night", "romance", "quiet and tender",
-  "mind-bender", "dark and twisty", "cult classic", "sharp satire", "gorgeous to look at",
-  "rainy Sunday", "comfort rewatch", "coming of age", "true story", "big laughs", "road trip",
-  "chaotic", "brain off", "whodunit", "outer space",
-];
+// NOTE: the mood list + hue mapping live in src/design/data.ts (the single source of
+// truth used by the live MoodScreen). The stale copies that were here — MOODS, MOOD_HUE,
+// hue — were only consumed by the removed legacy src/Tonight.tsx. Don't re-add them here.
 
 export const API_BASE = "https://wsww-dev-api.azurewebsites.net";
 
