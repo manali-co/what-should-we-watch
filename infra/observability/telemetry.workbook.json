@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "## 📊 Service telemetry\nLive users, activity, latency, errors and logs — from Application Insights. Set the time range and, if this workspace serves more than one app, the **Cloud role** below. Reusable across any project in the subscription: deploy this same workbook bound to that project's Application Insights."
+        "json": "## 📊 Service telemetry\nLive users, activity, latency, errors and logs — from this project's Application Insights. Set the time range below. Reusable across any project in the subscription: deploy this same workbook bound to that project's Application Insights (its `sourceId` scopes every query, so nothing here is app-specific)."
       },
       "name": "title"
     },
@@ -30,20 +30,6 @@
                 { "durationMs": 2592000000 }
               ]
             }
-          },
-          {
-            "id": "role",
-            "version": "KqlParameterItem/1.0",
-            "name": "Role",
-            "label": "Cloud role",
-            "type": 2,
-            "isRequired": false,
-            "multiSelect": true,
-            "quote": "'",
-            "delimiter": ",",
-            "typeSettings": { "additionalResourceOptions": ["value::all"], "showDefault": false },
-            "query": "requests | summarize by cloud_RoleName | order by cloud_RoleName asc",
-            "value": ["value::all"]
           }
         ],
         "style": "pills",
@@ -52,38 +38,27 @@
       "name": "parameters"
     },
     {
-      "type": 12,
+      "type": 3,
       "content": {
-        "version": "NotebookGroup/1.0",
-        "groupType": "editable",
-        "items": [
-          {
-            "type": 3,
-            "content": {
-              "version": "KqlItem/1.0",
-              "query": "requests\n| where isempty('{Role}') or cloud_RoleName in ({Role})\n| summarize Requests=count(), Failed=countif(success == false), Users=dcount(user_Id), Sessions=dcount(session_Id), P95ms=round(percentile(duration, 95),0)\n| extend ['Error %']=round(100.0 * Failed / todouble(Requests), 2)\n| project Requests, ['Error %'], Users, Sessions, P95ms",
-              "size": 4,
-              "queryType": 0,
-              "visualization": "tiles",
-              "tileSettings": {
-                "showBorder": true,
-                "titleContent": { "columnMatch": "Requests", "formatter": 12 }
-              }
-            },
-            "name": "overview-tiles"
-          }
-        ]
+        "version": "KqlItem/1.0",
+        "query": "requests\n| summarize Requests=count(), Failed=countif(success == false), Users=dcount(user_Id), Sessions=dcount(session_Id), P95ms=round(percentile(duration, 95),0)\n| extend ['Error %']=round(100.0 * Failed / todouble(Requests), 2)\n| project Requests, ['Error %'], Users, Sessions, P95ms",
+        "size": 4,
+        "queryType": 0,
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": true,
+          "titleContent": { "columnMatch": "Requests", "formatter": 12 }
+        }
       },
-      "name": "overview"
+      "name": "overview-tiles"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "requests\n| where isempty('{Role}') or cloud_RoleName in ({Role})\n| summarize Total=count(), Failed=countif(success == false) by bin(timestamp, {TimeRange:grain})\n| extend Succeeded = Total - Failed\n| project timestamp, Succeeded, Failed\n| render timechart",
+        "query": "requests\n| summarize Total=count(), Failed=countif(success == false) by bin(timestamp, {TimeRange:grain})\n| extend Succeeded = Total - Failed\n| project timestamp, Succeeded, Failed\n| render timechart",
         "size": 0,
         "title": "Request volume (succeeded vs failed)",
-        "timeContext": { "durationMs": 0 },
         "queryType": 0
       },
       "name": "req-volume"
@@ -92,7 +67,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "requests\n| where isempty('{Role}') or cloud_RoleName in ({Role})\n| summarize p50=percentile(duration,50), p95=percentile(duration,95), p99=percentile(duration,99) by bin(timestamp, {TimeRange:grain})\n| render timechart",
+        "query": "requests\n| summarize p50=percentile(duration,50), p95=percentile(duration,95), p99=percentile(duration,99) by bin(timestamp, {TimeRange:grain})\n| render timechart",
         "size": 0,
         "title": "Latency percentiles (ms)",
         "queryType": 0
@@ -103,7 +78,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "requests\n| where isempty('{Role}') or cloud_RoleName in ({Role})\n| summarize Count=count(), ['Avg ms']=round(avg(duration),0), ['P95 ms']=round(percentile(duration,95),0), ['Error %']=round(100.0*countif(success==false)/count(),2) by Operation=name\n| order by Count desc\n| take 20",
+        "query": "requests\n| summarize Count=count(), ['Avg ms']=round(avg(duration),0), ['P95 ms']=round(percentile(duration,95),0), ['Error %']=round(100.0*countif(success==false)/count(),2) by Operation=name\n| order by Count desc\n| take 20",
         "size": 0,
         "title": "Top operations",
         "queryType": 0,
@@ -121,7 +96,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "exceptions\n| where isempty('{Role}') or cloud_RoleName in ({Role})\n| summarize Count=count() by bin(timestamp, {TimeRange:grain})\n| render timechart",
+        "query": "exceptions\n| summarize Count=count() by bin(timestamp, {TimeRange:grain})\n| render timechart",
         "size": 0,
         "title": "Exceptions over time",
         "queryType": 0
@@ -132,7 +107,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "exceptions\n| where isempty('{Role}') or cloud_RoleName in ({Role})\n| summarize Count=count(), ['Last seen']=max(timestamp) by Problem=type, Method=coalesce(method, ''), Message=tostring(outerMessage)\n| order by Count desc\n| take 30",
+        "query": "exceptions\n| summarize Count=count(), ['Last seen']=max(timestamp) by Problem=type, Message=tostring(outerMessage)\n| order by Count desc\n| take 30",
         "size": 0,
         "title": "Top exceptions",
         "queryType": 0,
@@ -147,7 +122,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "union isfuzzy=true\n  (traces | where severityLevel >= 2 | project timestamp, kind='trace', level=tostring(severityLevel), role=cloud_RoleName, message),\n  (exceptions | project timestamp, kind='exception', level='error', role=cloud_RoleName, message=strcat(type, ': ', tostring(outerMessage)))\n| where isempty('{Role}') or role in ({Role})\n| order by timestamp desc\n| take 100",
+        "query": "union isfuzzy=true\n  (traces | where severityLevel >= 2 | project timestamp, kind='trace', level=tostring(severityLevel), operation=operation_Name, message),\n  (exceptions | project timestamp, kind='exception', level='error', operation=operation_Name, message=strcat(type, ': ', tostring(outerMessage)))\n| order by timestamp desc\n| take 100",
         "size": 0,
         "title": "Recent logs (warnings, errors, exceptions)",
         "queryType": 0,
