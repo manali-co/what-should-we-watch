@@ -16,7 +16,7 @@
   <img alt="Expo SDK 57" src="https://img.shields.io/badge/Expo-SDK%2057-000020?logo=expo&logoColor=white">
   <img alt="Python 3.12" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white">
   <img alt="Azure Functions" src="https://img.shields.io/badge/Azure-Functions-0078D4?logo=microsoftazure&logoColor=white">
-  <a href="apps/mobile/LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-4DBFB0"></a>
+  <a href="LICENSE"><img alt="Proprietary, source-available" src="https://img.shields.io/badge/license-proprietary%20%C2%B7%20source--available-C96A95"></a>
 </p>
 
 You're on the couch. Someone asks the question in the name. Twenty minutes later you're still scrolling.
@@ -113,9 +113,20 @@ This app does not use TMDB. Streaming availability comes from the Streaming Avai
 
 Branch from `dev`, keep commits in Conventional Commits form (`feat:`, `fix:`, `chore:`), and open a PR back into `dev`. CI has to be green. Visual changes go through the Claude Design project first and get ported; please don't improvise UI in code.
 
-## License
+## License and credit
 
-MIT. See [`apps/mobile/LICENSE`](apps/mobile/LICENSE).
+This one is ours. The code, designs and data pipelines are published so you can read them, learn from them and argue with them, but they're proprietary: no copying, shipping, training on, or building products from any of it without written permission. Ask in an issue; we're friendly. Full terms in [LICENSE](LICENSE).
+
+If you reference the project, please credit Manali and cite it ([`CITATION.cff`](CITATION.cff)):
+
+```bibtex
+@software{manali_wsww_2026,
+  author = {Manali and Agrawal, Ayush},
+  title  = {What Should We Watch: a mood-driven film picker},
+  year   = {2026},
+  url    = {https://github.com/manali-co/what-should-we-watch}
+}
+```
 
 <p align="center">
   <br>

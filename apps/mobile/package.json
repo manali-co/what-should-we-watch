@@ -51,6 +51,7 @@
     "test:e2e": "playwright test"
   },
   "private": true,
+  "license": "UNLICENSED",
   "jest": {
     "testEnvironment": "node",
     "testMatch": [

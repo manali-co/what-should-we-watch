@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "What Should We Watch is proprietary. If you reference it, cite it as below and credit Manali; using the code or designs needs written permission (see LICENSE)."
+title: "What Should We Watch: a mood-driven film picker"
+type: software
+authors:
+  - name: "Manali"
+    alias: "manali-co"
+    website: "https://github.com/manali-co"
+  - family-names: "Agrawal"
+    given-names: "Ayush"
+repository-code: "https://github.com/manali-co/what-should-we-watch"
+url: "https://github.com/manali-co/what-should-we-watch"
+license: "LicenseRef-Proprietary"
+version: "0.1.2"
+date-released: "2026-09-24"
+keywords:
+  - iOS
+  - Android
+  - streaming
+  - recommendations
+  - moods
+abstract: >-
+  Pick a mood, get ten films that are actually streaming on your services in
+  your country tonight, and swipe to decide. Every swipe teaches the
+  recommendation engine.
