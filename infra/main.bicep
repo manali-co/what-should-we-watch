@@ -4,6 +4,8 @@ targetScope = 'resourceGroup'
 param env string
 @description('Azure region')
 param location string = resourceGroup().location
+@description('Azure OpenAI (AI Foundry) endpoint for embeddings + ranking — powers the recs engine')
+param openaiEndpoint string
 
 var prefix = 'wsww-${env}'
 
@@ -36,6 +38,7 @@ module functions 'modules/functions.bicep' = {
     appInsightsConnectionString: obs.outputs.connectionString
     cosmosEndpoint: cosmos.outputs.endpoint
     keyVaultUri: kv.outputs.keyVaultUri
+    openaiEndpoint: openaiEndpoint
   }
 }
 
