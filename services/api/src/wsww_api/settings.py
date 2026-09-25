@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     group_ranking_model: str = ""       # OpenAI model id, e.g. "gpt-6"
     group_ranking_effort: Literal["low", "medium", "high"] = "low"  # reasoning effort
     clerk_issuer: str = ""
+    # Svix signing secret for Clerk webhooks (whsec_...). Set via KV. Empty => webhook 503s.
+    clerk_webhook_secret: str = ""
 
 
 @lru_cache

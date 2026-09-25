@@ -61,6 +61,7 @@ resource fn 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'WSWW_EMBEDDING_DEPLOYMENT', value: 'text-embedding-3-large' }
         { name: 'WSWW_RANKING_DEPLOYMENT', value: 'gpt-5.4-mini' }
         { name: 'WSWW_CLERK_ISSUER', value: clerkIssuer }
+        { name: 'WSWW_CLERK_WEBHOOK_SECRET', value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/clerk-webhook-secret/)' }
       ]
     }
   }

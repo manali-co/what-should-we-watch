@@ -13,6 +13,7 @@ from .errors import AppError, error_body
 from .routers import auth as auth_router
 from .routers import catalog as catalog_router
 from .routers import me as me_router
+from .routers import webhooks as webhooks_router
 
 # Azure Functions forwards the `logging` output to App Insights (the connection
 # string is set on the Function App), so structured request/error logs land there
@@ -56,4 +57,5 @@ def create_app(deps: Deps) -> FastAPI:
     app.include_router(auth_router.router, prefix="/v1")
     app.include_router(me_router.router, prefix="/v1")
     app.include_router(catalog_router.router, prefix="/v1")
+    app.include_router(webhooks_router.router, prefix="/v1")
     return app
