@@ -3,6 +3,7 @@ import { ReactNode } from "react";
 import { View, Text, StyleProp, ViewStyle, TextStyle } from "react-native";
 import { useTheme } from "./tokens";
 import type { MoodHue } from "./tokens";
+import { DiscAvatar, AvatarConfig } from "./DiscAvatar";
 
 /** Screen — page container. Horizontal page inset by default; the top safe area is applied
  *  once by the app's SafeAreaView, so this does not add it again. */
@@ -62,8 +63,10 @@ export function Blend({ hues, size = 24, style }: { hues: MoodHue[]; size?: numb
   );
 }
 
-export function Avatar({ person, size = 32, ring, style }: { person: { name: string; initial: string }; size?: number; ring?: MoodHue | null; style?: StyleProp<ViewStyle> }) {
+export function Avatar({ person, size = 32, ring, style }: { person: { name: string; initial: string; avatar?: AvatarConfig | null }; size?: number; ring?: MoodHue | null; style?: StyleProp<ViewStyle> }) {
   const t = useTheme();
+  // A person with a Disco renders as their disc; otherwise the initial bubble (1:1 with Shell.jsx).
+  if (person.avatar) return <DiscAvatar {...person.avatar} size={size} ring={!!ring} label={person.name} style={style} />;
   return (
     <View
       style={[

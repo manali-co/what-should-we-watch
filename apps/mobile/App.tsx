@@ -24,6 +24,8 @@ import { ShortlistScreen } from "./src/design/screens/ShortlistScreen";
 import { TasteScreen } from "./src/design/screens/TasteScreen";
 import { SettingsScreen } from "./src/design/screens/SettingsScreen";
 import { AccountScreen } from "./src/design/screens/AccountScreen";
+import { AvatarPickerScreen } from "./src/design/screens/AvatarPickerScreen";
+import type { AvatarConfig } from "./src/design/DiscAvatar";
 import { GateSheet, GateFeature } from "./src/design/screens/GateSheet";
 
 type Tab = "tonight" | "shortlist" | "taste" | "settings";
@@ -99,6 +101,10 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
   const [guest, setGuest] = useState(false);
   const [dismissedNudges, setDismissedNudges] = useState<Record<string, boolean>>({});
   const [showAccount, setShowAccount] = useState(false);
+  // The user's "Disco" avatar (mood hue + blob shape + face). Local + persisted; null = the
+  // initial-letter fallback until they pick one.
+  const [avatar, setAvatar] = useState<AvatarConfig | null>(null);
+  const [showAvatar, setShowAvatar] = useState(false);
   const [gate, setGate] = useState<GateFeature | null>(null);
   const [signInOverlay, setSignInOverlay] = useState(false);
   // The deck/thinking flow is full-screen (tab bar hidden), matching the design.
@@ -114,7 +120,7 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
   useEffect(() => {
     AsyncStorage.getItem(STORE).then((raw) => {
       if (raw) {
-        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); setGuest(!!s.guest); setDismissedNudges(cleanNudges(s.dismissedNudges)); setShortlist(s.shortlist ?? []); setDecisions(s.decisions ?? 0); setSeenIds(s.seenIds ?? []); } catch {}
+        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); setGuest(!!s.guest); setDismissedNudges(cleanNudges(s.dismissedNudges)); setShortlist(s.shortlist ?? []); setDecisions(s.decisions ?? 0); setSeenIds(s.seenIds ?? []); setAvatar(s.avatar ?? null); } catch {}
       }
       setReady(true);
     });
@@ -148,8 +154,9 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
   };
   const declineBio = () => { setBioAsked(true); setBioOffer(false); persist({ bioAsked: true }); };
 
-  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string; guest?: boolean; dismissedNudges?: Record<string, boolean>; shortlist?: Film[]; decisions?: number; seenIds?: string[] }) =>
-    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, guest, dismissedNudges, shortlist, decisions, seenIds, ...next })).catch(() => {});
+  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string; guest?: boolean; dismissedNudges?: Record<string, boolean>; shortlist?: Film[]; decisions?: number; seenIds?: string[]; avatar?: AvatarConfig | null }) =>
+    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, guest, dismissedNudges, shortlist, decisions, seenIds, avatar, ...next })).catch(() => {});
+  const saveAvatar = (a: AvatarConfig) => { setAvatar(a); persist({ avatar: a }); setShowAvatar(false); };
   const finishOnboarding = (svcs: string[], countryName: string, name: string) => {
     setServices(svcs); setCountry(countryName); setDisplayName(name); setOnboarded(true);
     persist({ services: svcs, country: countryName, displayName: name, onboarded: true });
@@ -202,6 +209,15 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
   }
   // A guest who chose to sign in: full-screen SignIn until a session exists.
   if (signInOverlay && !isSignedIn) return <SignIn onCancel={() => setSignInOverlay(false)} />;
+  // The Disco avatar picker (reached from Account or the mood header) takes over the screen.
+  // Available to guests too — the avatar is local state and needs no account.
+  if (showAvatar)
+    return (
+      <SafeAreaView style={sh.root} edges={["top", "bottom"]}>
+        <StatusBar barStyle={barStyle} />
+        <AvatarPickerScreen avatar={avatar} onSave={saveAvatar} onBack={() => setShowAvatar(false)} />
+      </SafeAreaView>
+    );
   // Account management (members only) takes over the screen.
   if (showAccount && isSignedIn)
     return (
@@ -215,6 +231,8 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
           googleConnected={googleConnected}
           memberSince={user?.createdAt ? user.createdAt.toLocaleDateString(undefined, { month: "long", year: "numeric" }) : undefined}
           decisionCount={decisions}
+          avatar={avatar}
+          onOpenAvatar={() => setShowAvatar(true)}
           onBack={() => setShowAccount(false)}
           onSaveName={saveName}
           onLogout={logout}
@@ -245,6 +263,8 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
                 firstTime={decisions === 0}
                 userInitial={userInitial}
                 userName={displayName || (user?.firstName ?? undefined)}
+                avatar={avatar}
+                onOpenAvatar={() => setShowAvatar(true)}
                 country={country}
               />
             )}
