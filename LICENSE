@@ -1,0 +1,25 @@
+Copyright (c) 2026 Manali (manali-co). All rights reserved.
+
+What Should We Watch is proprietary, source-available software.
+
+The source code, designs, brand assets, data pipelines and documentation in this
+repository are published so they can be read, studied and discussed. No licence
+is granted to use, copy, modify, merge, publish, distribute, sublicense, sell,
+train on, or build products from any part of it, in whole or in part, without
+prior written permission from Manali.
+
+You may quote short excerpts for commentary, review or teaching, with credit to
+Manali and a link to https://github.com/manali-co/what-should-we-watch.
+
+You may clone, build and run the software on your own machine to evaluate it,
+to report problems, and to prepare a contribution. That is the whole of the
+permission: no deployment, no redistribution, no derived products.
+
+Contributions are welcome. By submitting a pull request you agree that Manali
+may use your contribution under these terms.
+
+To ask for permission or a licence, open an issue on the repository.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED. IN NO EVENT SHALL MANALI BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.
