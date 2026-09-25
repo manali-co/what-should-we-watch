@@ -19,6 +19,7 @@ import time
 from typing import Any
 
 from fastapi import APIRouter, Request, Response
+from starlette.concurrency import run_in_threadpool
 
 from ._common import deps_of
 
@@ -77,9 +78,15 @@ async def clerk_webhook(request: Request) -> Response:
 
     if evt.get("type") == "user.deleted":
         sub = (evt.get("data") or {}).get("id")
-        if sub:
-            uid = "clerk:" + str(sub)
-            n = deps.decisions.purge_for_user(uid)
-            deps.taste.purge_for_user(uid)
-            log.info("purged data for deleted clerk user (decisions=%d)", n)
+        if not sub:
+            # A user.deleted we can't act on is a real problem (data would linger) — make it
+            # visible and let Clerk retry rather than silently acknowledging.
+            log.warning("user.deleted webhook with no user id — cannot purge")
+            return Response(status_code=400)
+        uid = "clerk:" + str(sub)
+        # Cosmos calls are synchronous; run off the event loop so a large purge doesn't
+        # block other requests or trip the webhook's delivery timeout.
+        n = await run_in_threadpool(deps.decisions.purge_for_user, uid)
+        await run_in_threadpool(deps.taste.purge_for_user, uid)
+        log.info("purged data for deleted clerk user (decisions=%d)", n)
     return Response(status_code=204)
