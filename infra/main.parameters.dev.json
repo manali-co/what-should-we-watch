@@ -2,7 +2,14 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "env": { "value": "dev" },
-    "location": { "value": "eastus2" }
+    "env": {
+      "value": "dev"
+    },
+    "location": {
+      "value": "eastus2"
+    },
+    "openaiEndpoint": {
+      "value": "https://wsww-dev-ai.cognitiveservices.azure.com/"
+    }
   }
 }
