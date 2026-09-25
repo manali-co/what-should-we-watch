@@ -20,6 +20,17 @@ resource kvCrypto 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
+// Key Vault Secrets User — read secrets (the Clerk webhook signing secret) via KV reference
+resource kvSecrets 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: kv
+  name: guid(kv.id, principalId, '4633458b-17de-408a-b874-0445c86b69e6')
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
+    principalId: principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // Storage Blob Data Contributor
 resource blobContrib 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: storage
