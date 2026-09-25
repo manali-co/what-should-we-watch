@@ -122,7 +122,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "union isfuzzy=true\n  (traces | where severityLevel >= 2 | project timestamp, kind='trace', level=tostring(severityLevel), operation=operation_Name, message),\n  (exceptions | project timestamp, kind='exception', level='error', operation=operation_Name, message=strcat(type, ': ', tostring(outerMessage)))\n| order by timestamp desc\n| take 100",
+        "query": "union isfuzzy=true\n  (traces | where severityLevel >= 2 | project timestamp, Source='trace', Level=tostring(severityLevel), Operation=operation_Name, Message=message),\n  (exceptions | project timestamp, Source='exception', Level='error', Operation=operation_Name, Message=strcat(type, ': ', tostring(outerMessage)))\n| order by timestamp desc\n| take 100",
         "size": 0,
         "title": "Recent logs (warnings, errors, exceptions)",
         "queryType": 0,
