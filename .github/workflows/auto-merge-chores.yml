@@ -1,0 +1,75 @@
+name: Auto-merge chores
+
+# Auto-merge low-risk chore PRs once OUR build + CI (the "CI" workflow) has passed for the
+# PR's head commit. Scope is deliberately narrow:
+#   - docs / config / chore-branch PRs (chore/*, or a "chore:"/"docs:" title), and dep bumps.
+# EXCLUDED on purpose:
+#   - release-please release PRs ("chore(main): release …" / release-please--* branches). Those
+#     cut package releases, and an api release triggers deploy-prod in release.yml — they must
+#     stay a deliberate, manual merge until prod is provisioned.
+# Gating is exactly "our build + CI passed": this only runs on a successful CI workflow_run.
+# Note: the merge is performed by GITHUB_TOKEN, which by design does NOT trigger further
+# workflow runs — fine here, since these chores need no downstream deploy.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge the chore PR whose CI just passed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          # The open PR whose HEAD is exactly the commit CI ran on — a commit can map to several
+          # PRs (different base branches), so match head.sha, don't just take the first.
+          pr=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" \
+                 | jq -r --arg sha "$HEAD_SHA" 'map(select(.state == "open" and .head.sha == $sha)) | .[0].number // empty')
+          if [ -z "$pr" ]; then echo "No open PR headed at $HEAD_SHA — nothing to merge."; exit 0; fi
+
+          # PR details from the REST API (author_association is snake_case here; it is NOT a
+          # `gh pr view --json` field). Untrusted fields go through jq into vars, never the shell.
+          prjson=$(gh api "repos/$REPO/pulls/$pr")
+          author=$(printf '%s' "$prjson" | jq -r '.user.login')
+          assoc=$(printf '%s'  "$prjson" | jq -r '.author_association')
+          head=$(printf '%s'   "$prjson" | jq -r '.head.ref')
+          title=$(printf '%s'  "$prjson" | jq -r '.title')
+          draft=$(printf '%s'  "$prjson" | jq -r '.draft')
+
+          # Author trust gate (supply-chain): only auto-merge PRs from the repo owner / an org
+          # member / a collaborator, or the known chore bots. An outsider PR — even one titled
+          # "chore:" with passing CI — is never auto-merged.
+          trusted=false
+          case "$assoc"  in OWNER|MEMBER|COLLABORATOR) trusted=true ;; esac
+          case "$author" in dependabot*|renovate*|github-actions*) trusted=true ;; esac
+          if [ "$trusted" != "true" ]; then
+            echo "PR #$pr author '$author' ($assoc) is not trusted — not auto-merging."
+            exit 0
+          fi
+
+          chore=false
+          case "$head"  in chore/*) chore=true ;; esac
+          case "$title" in chore:*|"chore("*|docs:*|"docs("*|build:*|"build("*|ci:*|"ci("*) chore=true ;; esac
+          case "$author" in dependabot*|renovate*) chore=true ;; esac
+          # Never auto-merge release-please release PRs (they cut releases / deploy prod).
+          case "$head"  in release-please--*) chore=false ;; esac
+          case "$title" in "chore(main): release"*|"chore: release"*) chore=false ;; esac
+
+          if [ "$draft" = "true" ] || [ "$chore" != "true" ]; then
+            echo "PR #$pr ('$title') is not an auto-mergeable chore — leaving it."
+            exit 0
+          fi
+
+          echo "Auto-merging chore PR #$pr: $title"
+          gh pr merge "$pr" --repo "$REPO" --squash --delete-branch=false \
+            || echo "Could not merge #$pr (conflict / not mergeable) — leaving it for reconciliation."
