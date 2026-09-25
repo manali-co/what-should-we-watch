@@ -33,6 +33,10 @@ type Tab = "tonight" | "shortlist" | "taste" | "settings";
 // notes these map to SF Symbols in a native build; the marks read the same in the meantime.
 const TAB_GLYPH: Record<Tab, string> = { tonight: "◐", shortlist: "≡", taste: "◎", settings: "⋯" };
 const STORE = "wsww:v1";
+// The tutorial/coach-mark version the app currently ships. We persist the highest version a
+// viewer has completed; the first-run tutorial shows whenever theirs is lower — so it appears
+// once for new users AND re-appears (once) after we bump this to introduce new-feature coaching.
+const TUTORIAL_VERSION = 1;
 
 // Persisted JSON is untrusted: a corrupted or wrong-shaped `dismissedNudges` (a string,
 // array, null…) must not slip through `?? {}` and make `.taste`/`.shortlist` reads undefined,
@@ -100,6 +104,8 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
   const [decisions, setDecisions] = useState(0);
   // Film ids already decided on, so a new deal never re-shows them (persisted, capped).
   const [seenIds, setSeenIds] = useState<string[]>([]);
+  // Highest tutorial version this viewer has completed (persisted); < TUTORIAL_VERSION shows it.
+  const [seenTutorial, setSeenTutorial] = useState(0);
   // Guest mode: the full core loop works signed-out on this phone. Account-only
   // features (sync, group, account, export, delete) open a sign-in Gate instead.
   const [guest, setGuest] = useState(false);
@@ -124,7 +130,7 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
   useEffect(() => {
     AsyncStorage.getItem(STORE).then((raw) => {
       if (raw) {
-        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); setGuest(!!s.guest); setDismissedNudges(cleanNudges(s.dismissedNudges)); setShortlist(s.shortlist ?? []); setDecisions(s.decisions ?? 0); setSeenIds(s.seenIds ?? []); setAvatar(s.avatar ?? null); } catch {}
+        try { const s = JSON.parse(raw); setServices(s.services ?? []); setOnboarded(!!s.onboarded); setBioAsked(!!s.bioAsked); setCountry(s.country ?? "United States"); setDisplayName(s.displayName ?? ""); setGuest(!!s.guest); setDismissedNudges(cleanNudges(s.dismissedNudges)); setShortlist(s.shortlist ?? []); setDecisions(s.decisions ?? 0); setSeenIds(s.seenIds ?? []); setAvatar(s.avatar ?? null); setSeenTutorial(typeof s.tutorialVersion === "number" ? s.tutorialVersion : 0); } catch {}
       }
       setReady(true);
     });
@@ -158,8 +164,8 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
   };
   const declineBio = () => { setBioAsked(true); setBioOffer(false); persist({ bioAsked: true }); };
 
-  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string; guest?: boolean; dismissedNudges?: Record<string, boolean>; shortlist?: Film[]; decisions?: number; seenIds?: string[]; avatar?: AvatarConfig | null }) =>
-    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, guest, dismissedNudges, shortlist, decisions, seenIds, avatar, ...next })).catch(() => {});
+  const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string; guest?: boolean; dismissedNudges?: Record<string, boolean>; shortlist?: Film[]; decisions?: number; seenIds?: string[]; avatar?: AvatarConfig | null; tutorialVersion?: number }) =>
+    AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, guest, dismissedNudges, shortlist, decisions, seenIds, avatar, tutorialVersion: seenTutorial, ...next })).catch(() => {});
   const saveAvatar = (a: AvatarConfig) => { setAvatar(a); persist({ avatar: a }); setShowAvatar(false); };
   const finishOnboarding = (svcs: string[], countryName: string, name: string, chosenAvatar: AvatarConfig | null) => {
     setServices(svcs); setCountry(countryName); setDisplayName(name); setOnboarded(true);
@@ -266,6 +272,8 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
                 onOpenShortlist={() => setTab("shortlist")}
                 onImmersive={setImmersive}
                 firstTime={decisions === 0}
+                tutorialUnseen={seenTutorial < TUTORIAL_VERSION}
+                onTutorialSeen={() => { setSeenTutorial(TUTORIAL_VERSION); persist({ tutorialVersion: TUTORIAL_VERSION }); }}
                 userInitial={userInitial}
                 userName={displayName || (user?.firstName ?? undefined)}
                 avatar={avatar}
