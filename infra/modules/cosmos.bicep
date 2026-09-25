@@ -1,5 +1,7 @@
 param location string
 param prefix string
+@description('Log Analytics workspace resource id for audit logs (empty = skip diagnostics)')
+param workspaceId string = ''
 
 resource account 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
   name: take(toLower('${prefix}-cosmos'), 44)
@@ -67,6 +69,20 @@ resource catalog 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@
         vectorIndexes: [ { path: '/embedding', type: 'diskANN' } ]
       }
     }
+  }
+}
+
+// Audit control- and data-plane requests to Log Analytics (who read/wrote what, and admin ops).
+resource cosmosAudit 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(workspaceId)) {
+  scope: account
+  name: 'audit-to-logs'
+  properties: {
+    workspaceId: workspaceId
+    logs: [
+      { category: 'DataPlaneRequests', enabled: true }
+      { category: 'ControlPlaneRequests', enabled: true }
+    ]
+    metrics: [ { category: 'Requests', enabled: true } ]
   }
 }
 

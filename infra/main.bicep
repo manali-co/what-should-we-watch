@@ -23,12 +23,12 @@ module storage 'modules/storage.bicep' = {
 
 module kv 'modules/keyvault.bicep' = {
   name: 'keyvault'
-  params: { location: location, prefix: prefix }
+  params: { location: location, prefix: prefix, workspaceId: obs.outputs.workspaceId }
 }
 
 module cosmos 'modules/cosmos.bicep' = {
   name: 'cosmos'
-  params: { location: location, prefix: prefix }
+  params: { location: location, prefix: prefix, workspaceId: obs.outputs.workspaceId }
 }
 
 module functions 'modules/functions.bicep' = {

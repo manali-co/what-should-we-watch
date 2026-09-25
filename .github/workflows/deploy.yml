@@ -1,0 +1,47 @@
+name: Deploy (env)
+
+# Parameterised deploy for any environment. dev also auto-deploys via deploy-dev.yml on push;
+# this workflow provisions/updates test and prod on demand. Each environment resolves its own
+# Azure credentials from the matching GitHub Environment (dev/test/prod) — set env-scoped
+# AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID there to point at a separate
+# subscription; with none set it falls back to the repo-level vars (same subscription).
+# NOTE: workflow_dispatch only runs from the default branch (main).
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        type: choice
+        options: [dev, test, prod]
+        default: test
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Provision infra
+        run: |
+          az group create -n rg-wsww-${{ inputs.environment }} -l eastus2
+          az deployment group create -g rg-wsww-${{ inputs.environment }} \
+            --template-file infra/main.bicep \
+            --parameters infra/main.parameters.${{ inputs.environment }}.json
+      - name: Install Azure Functions Core Tools
+        run: npm install -g azure-functions-core-tools@4 --unsafe-perm true
+      - name: Deploy functions (Flex Consumption, remote build)
+        working-directory: services/api
+        run: func azure functionapp publish wsww-${{ inputs.environment }}-api --python --build remote

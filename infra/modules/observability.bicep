@@ -40,3 +40,4 @@ resource telemetryWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
 output connectionString string = appi.properties.ConnectionString
 output appInsightsId string = appi.id
 output workbookId string = telemetryWorkbook.id
+output workspaceId string = logs.id
