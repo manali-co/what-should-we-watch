@@ -12,10 +12,6 @@ from ._common import deps_of
 
 router = APIRouter(tags=["me"])
 
-# Containers whose rows belong to a user, for a complete export. Later sub-projects
-# append their container names here; the endpoint needs no other change.
-EXPORT_CONTAINERS: list[str] = ["sessions", "decisions", "shortlist", "followups", "taste"]
-
 
 def current_user(request: Request) -> User:
     deps: Deps = deps_of(request)
@@ -57,15 +53,24 @@ async def patch_me(body: MePatch, request: Request) -> MeOut:
 
 @router.get("/me/export")
 async def export_me(request: Request) -> dict[str, Any]:
+    """The user's own data, for portability: profile, every decision, and taste notes."""
+    deps = deps_of(request)
     user = current_user(request)
-    return {"user": user.model_dump(), "containers": {c: [] for c in EXPORT_CONTAINERS}}
+    return {
+        "user": user.model_dump(),
+        "decisions": deps.decisions.export_for_user(user.id),
+        "taste": deps.taste.export_for_user(user.id),
+    }
 
 
 @router.delete("/me", status_code=204)
 async def delete_me(request: Request) -> Response:
+    """Delete the account and the data we hold: decisions, taste, and the user's PII."""
     deps = deps_of(request)
     user = current_user(request)
-    deps.users.soft_delete(user.id)
+    deps.decisions.purge_for_user(user.id)
+    deps.taste.purge_for_user(user.id)
+    deps.users.soft_delete(user.id)  # scrubs name + identity, keeps a tombstone
     # Revoke every refresh family the user holds.
     for row in deps.tokens_repo.list_for_user(user.id):
         deps.tokens_repo.revoke_family(row["family"], user.id)

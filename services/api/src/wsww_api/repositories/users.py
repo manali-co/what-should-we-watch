@@ -48,7 +48,12 @@ class UsersRepo:
         user = self.get(user_id)
         if user is None:
             return
+        # Real deletion: scrub personal data (name + the linked Apple/Google identity),
+        # leaving only a tombstone (id + deleted_at) so sessions stay invalid and the id
+        # can't be re-linked. upsert() recomputes the now-empty provider keys.
         user.deleted_at = _now()
+        user.display_name = None
+        user.providers = []
         self.upsert(user)
 
     @staticmethod
