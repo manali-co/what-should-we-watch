@@ -64,6 +64,13 @@ def test_missing_secret_returns_503() -> None:
     assert r.status_code == 503
 
 
+def test_user_deleted_without_id_is_rejected() -> None:
+    app, deps = build_app()
+    deps.settings.clerk_webhook_secret = SECRET
+    r = _post(TestClient(app), SECRET, {"type": "user.deleted", "data": {}})
+    assert r.status_code == 400
+
+
 def test_other_events_are_ignored_not_purged() -> None:
     app, deps = build_app()
     deps.settings.clerk_webhook_secret = SECRET
