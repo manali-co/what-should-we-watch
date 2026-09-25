@@ -41,6 +41,52 @@ async function completeOnboarding(page: Page) {
   await page.getByText("Skip for now").click();
 }
 
+test.describe("returning-user prediction (web)", () => {
+  test.beforeEach(async ({ page }) => { await mockApi(page); });
+
+  test("a returning user with history opens on the predicted mood, and can deal it", async ({ page }) => {
+    // Real signal from /taste → the Tonight fast path (not the picker).
+    await page.route("**/v1/catalog/taste*", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        notes: "likes slow burns", total: 12,
+        actions: { like: 7, maybe: 2, dislike: 2, watched: 1 },
+        reactions: { loved: 3, okay: 1, disliked: 0 },
+        topMoods: ["cozy", "feel-good"],
+        patterns: [{ signal: "Sunday nights", moods: ["cozy"], sampleTitle: "X", count: 9 }],
+      }) }));
+    // Seed an onboarded returning guest with history so TonightFlow enters the predict phase.
+    await page.addInitScript(() => {
+      try { localStorage.setItem("wsww:v1", JSON.stringify({ onboarded: true, guest: true, services: ["netflix"], country: "United States", decisions: 12, seenIds: [], shortlist: [] })); } catch {}
+    });
+    await page.goto("/");
+    await expect(page.getByText(/We think tonight feels like/)).toBeVisible({ timeout: 25_000 });
+    await expect(page.getByText("cozy", { exact: true }).first()).toBeVisible();
+    // Accept the guess → thinking → deck with the (mocked) films.
+    await page.getByText("Sounds right, deal them").click();
+    await expect(page.getByText(FILMS[0].title).first()).toBeVisible({ timeout: 25_000 });
+  });
+
+  test("the prediction previews quick-recs and can steer to the picker", async ({ page }) => {
+    await page.route("**/v1/catalog/taste*", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        notes: "", total: 9, actions: { like: 5, maybe: 2, dislike: 2, watched: 0 },
+        reactions: { loved: 0, okay: 0, disliked: 0 }, topMoods: ["cozy"], patterns: [],
+      }) }));
+    await page.addInitScript(() => {
+      try { localStorage.setItem("wsww:v1", JSON.stringify({ onboarded: true, guest: true, services: ["netflix"], country: "United States", decisions: 9, seenIds: [], shortlist: [] })); } catch {}
+    });
+    await page.goto("/");
+    await expect(page.getByText(/We think tonight feels like/)).toBeVisible({ timeout: 25_000 });
+    await page.getByText(/Tap to preview/).click();
+    await expect(page.getByText("Three we’re fairly sure about.")).toBeVisible({ timeout: 15_000 });
+    // Steer to the picker — assert a picker-only control (the prediction heading also matches
+    // /feels like/, so this must key off something that appears only in the mood picker).
+    await page.getByText("Not quite — pick moods myself").click();
+    await expect(page.getByText("Surprise us")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("mind-bender", { exact: true })).toBeVisible();
+  });
+});
+
 test.describe("guest flow (web)", () => {
   test.beforeEach(async ({ page }) => { await mockApi(page); });
 

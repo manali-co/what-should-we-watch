@@ -144,7 +144,23 @@ export type TasteProfile = {
 // The viewer's real taste: the engine's running notes + honest tallies. Cold-start
 // (a new or guest viewer) comes back all-zero, so the UI can be truthful, not invented.
 export async function fetchTaste(): Promise<TasteProfile> {
-  const r = await fetch(`${API_BASE}/v1/catalog/taste`, { headers: await authHeaders() });
-  if (!r.ok) throw new Error(`taste ${r.status}`);
-  return (await r.json()) as TasteProfile;
+  // Bound the WHOLE operation (header generation included): fetch has no default RN timeout, and
+  // authHeaders() awaits the Clerk token getter, which can itself hang. The predicted-mood path
+  // shows a spinner until this settles, so we race against a hard deadline — a stall of either
+  // the token or the network rejects here, and TonightFlow falls back to the mood picker.
+  const ctrl = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => { ctrl.abort(); reject(new Error("taste timeout")); }, 10000);
+  });
+  const run = (async () => {
+    const r = await fetch(`${API_BASE}/v1/catalog/taste`, { headers: await authHeaders(), signal: ctrl.signal });
+    if (!r.ok) throw new Error(`taste ${r.status}`);
+    return (await r.json()) as TasteProfile;
+  })();
+  try {
+    return await Promise.race([run, deadline]);
+  } finally {
+    clearTimeout(timer!);
+  }
 }
