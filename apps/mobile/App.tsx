@@ -9,7 +9,7 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Linking, Platform, Pressable, Share, StatusBar, StyleSheet, Text, useColorScheme, View } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { setAuthTokenGetter } from "./src/api";
 import { publishableKey } from "./src/clerk";
 import { Film } from "./src/films";
@@ -78,6 +78,7 @@ export default function App() {
 
 function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (p: ThemePref) => void }) {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const sh = useMemo(() => makeShellStyles(t.color), [t.color]);
   const barStyle = t.name === "light" ? "dark-content" : "light-content";
   const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
@@ -314,7 +315,7 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
             )}
           </View>
           {immersive ? null : (
-            <View style={sh.nav} testID="tab-bar">
+            <View style={[sh.nav, { paddingBottom: insets.bottom + 6, marginBottom: -insets.bottom }]} testID="tab-bar">
               {([["tonight", "Tonight"], ["shortlist", `Shortlist${shortlist.length ? ` ${shortlist.length}` : ""}`], ["taste", "Taste"], ["settings", "Settings"]] as [Tab, string][]).map(
                 ([key, label]) => (
                   <Pressable key={key} testID={`tab-${key}`} style={[sh.navItem, tab === key && sh.navItemOn]} onPress={() => setTab(key)}>
@@ -361,7 +362,9 @@ const makeShellStyles = (c: ThemeColors) => StyleSheet.create({
   lockTitle: { color: c.ink, fontFamily: fontFamily.display, fontSize: 32 },
   unlock: { backgroundColor: c.accent, borderRadius: 999, paddingVertical: 14, paddingHorizontal: 24 },
   unlockText: { color: c.onAccent, fontFamily: fontFamily.bodySemiBold, fontSize: 16 },
-  nav: { flexDirection: "row", gap: 4, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10, borderTopWidth: 1, borderTopColor: c.hairline, backgroundColor: c.bg },
+  // paddingBottom + marginBottom are set dynamically from the safe-area inset so the bar fills
+  // to the screen edge (its background covers the home-indicator area) instead of leaving a gap.
+  nav: { flexDirection: "row", gap: 4, paddingHorizontal: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: c.hairline, backgroundColor: c.bg },
   navItem: { flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 999, gap: 2 },
   navItemOn: { backgroundColor: c.surfaceRaised },
   navGlyph: { color: c.inkTertiary, fontFamily: fontFamily.body, fontSize: 18, lineHeight: 20 },
