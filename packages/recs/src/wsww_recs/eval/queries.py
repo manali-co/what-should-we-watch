@@ -79,3 +79,42 @@ def benchmark() -> list[VibeQuery]:
     for i, c in enumerate(_CUSTOM):
         out.append(VibeQuery(id=f"custom:{i}", moods=list(c), shape="custom"))
     return out
+
+
+# --- Mood-count × coherence ladders -------------------------------------------------
+# A controlled set to answer "how many moods before results degrade, and does coherence
+# matter?". Each ladder is an ORDERED list; query N takes the first N moods, so N and N-1
+# differ by exactly ONE added mood — isolating the marginal effect of stacking a mood.
+#   complementary = moods that cohere (the blended query vector stays meaningful as it grows)
+#   conflicting   = moods pulled across the grain (the averaged vector should muddy)
+# At N=1 the two families are just single coherent moods and should track together; the
+# hypothesis is that conflicting ladders diverge (fall) as N grows while complementary hold.
+# All moods are drawn from the taxonomy the app actually sends (see _SINGLE / _COMBO).
+@dataclass(frozen=True)
+class LadderQuery:
+    id: str
+    moods: list[str]
+    family: Literal["complementary", "conflicting"]
+    count: int
+
+
+_LADDERS: list[tuple[str, str, list[str]]] = [  # (family, seed, ordered moods)
+    ("complementary", "cozy", ["cozy", "quiet and tender", "rainy Sunday", "comfort rewatch", "feel-good"]),
+    ("complementary", "twisty", ["edge of the seat", "heist energy", "whodunit", "dark and twisty", "mind-bender"]),
+    ("complementary", "laughs", ["big laughs", "feel-good", "date night", "brain off", "nostalgic"]),
+    ("conflicting", "cozy-wild", ["cozy", "edge of the seat", "properly scary", "big laughs", "mind-bender"]),
+    ("conflicting", "light-dark", ["feel-good", "dark and twisty", "cry it out", "brain off", "a proper epic"]),
+    ("conflicting", "calm-chaos", ["quiet and tender", "heist energy", "big laughs", "properly scary", "outer space"]),
+]
+
+
+def mood_count_ladders(max_n: int = 5) -> list[LadderQuery]:
+    """Nested ladders: for each seed, queries of length 1..max_n (prefixes of the ladder)."""
+    out: list[LadderQuery] = []
+    for family, seed, moods in _LADDERS:
+        for n in range(1, min(max_n, len(moods)) + 1):
+            out.append(LadderQuery(
+                id=f"{family}:{seed}:n{n}", moods=moods[:n],
+                family=family, count=n,  # type: ignore[arg-type]
+            ))
+    return out
