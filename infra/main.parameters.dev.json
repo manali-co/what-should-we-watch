@@ -10,6 +10,9 @@
     },
     "openaiEndpoint": {
       "value": "https://wsww-dev-ai.cognitiveservices.azure.com/"
+    },
+    "clerkIssuer": {
+      "value": "https://beloved-cicada-6922.clerk.accounts.dev"
     }
   }
 }

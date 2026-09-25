@@ -6,6 +6,8 @@ param env string
 param location string = resourceGroup().location
 @description('Azure OpenAI (AI Foundry) endpoint for embeddings + ranking — powers the recs engine')
 param openaiEndpoint string
+@description('Clerk instance issuer (Frontend API URL) for verifying session tokens')
+param clerkIssuer string
 
 var prefix = 'wsww-${env}'
 
@@ -39,6 +41,7 @@ module functions 'modules/functions.bicep' = {
     cosmosEndpoint: cosmos.outputs.endpoint
     keyVaultUri: kv.outputs.keyVaultUri
     openaiEndpoint: openaiEndpoint
+    clerkIssuer: clerkIssuer
   }
 }
 
