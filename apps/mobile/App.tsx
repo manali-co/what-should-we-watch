@@ -29,6 +29,9 @@ import type { AvatarConfig } from "./src/design/DiscAvatar";
 import { GateSheet, GateFeature } from "./src/design/screens/GateSheet";
 
 type Tab = "tonight" | "shortlist" | "taste" | "settings";
+// Per-tab glyphs, 1:1 with the design's TabBar (Account.jsx). Glyph placeholders → the design
+// notes these map to SF Symbols in a native build; the marks read the same in the meantime.
+const TAB_GLYPH: Record<Tab, string> = { tonight: "◐", shortlist: "≡", taste: "◎", settings: "⋯" };
 const STORE = "wsww:v1";
 
 // Persisted JSON is untrusted: a corrupted or wrong-shaped `dismissedNudges` (a string,
@@ -315,6 +318,7 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
               {([["tonight", "Tonight"], ["shortlist", `Shortlist${shortlist.length ? ` ${shortlist.length}` : ""}`], ["taste", "Taste"], ["settings", "Settings"]] as [Tab, string][]).map(
                 ([key, label]) => (
                   <Pressable key={key} testID={`tab-${key}`} style={[sh.navItem, tab === key && sh.navItemOn]} onPress={() => setTab(key)}>
+                    <Text style={[sh.navGlyph, tab === key && sh.navGlyphOn]}>{TAB_GLYPH[key]}</Text>
                     <Text style={[sh.navText, tab === key && sh.navTextOn]}>{label}</Text>
                   </Pressable>
                 ),
@@ -358,9 +362,11 @@ const makeShellStyles = (c: ThemeColors) => StyleSheet.create({
   unlock: { backgroundColor: c.accent, borderRadius: 999, paddingVertical: 14, paddingHorizontal: 24 },
   unlockText: { color: c.onAccent, fontFamily: fontFamily.bodySemiBold, fontSize: 16 },
   nav: { flexDirection: "row", gap: 4, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10, borderTopWidth: 1, borderTopColor: c.hairline, backgroundColor: c.bg },
-  navItem: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 999 },
+  navItem: { flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 999, gap: 2 },
   navItemOn: { backgroundColor: c.surfaceRaised },
-  navText: { color: c.inkSecondary, fontFamily: fontFamily.bodyMedium, fontSize: 13 },
+  navGlyph: { color: c.inkTertiary, fontFamily: fontFamily.body, fontSize: 18, lineHeight: 20 },
+  navGlyphOn: { color: c.ink },
+  navText: { color: c.inkTertiary, fontFamily: fontFamily.bodyMedium, fontSize: 11, letterSpacing: 0.88, textTransform: "uppercase" },
   navTextOn: { color: c.ink, fontFamily: fontFamily.bodySemiBold },
   loadingText: { color: c.inkSecondary, fontFamily: fontFamily.body },
 });
