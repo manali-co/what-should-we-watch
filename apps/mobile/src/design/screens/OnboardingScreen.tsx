@@ -2,17 +2,20 @@
 // Three steps (Dots n=3): country confirm, services (min 1 of 20), optional name + primer.
 // Presentational only; emits onDone(services, country, name) once step 3's CTA is pressed.
 import { useState } from "react";
-import { ScrollView, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Body, Dots, Headline, Micro, Screen, TopRow } from "../primitives";
+import { Avatar, Body, Dots, Headline, Micro, Screen, TopRow } from "../primitives";
 import { Button, Switch } from "../controls";
 import { ListRow } from "../surfaces";
 import { useTheme } from "../tokens";
+import type { AvatarConfig } from "../DiscAvatar";
+import { AvatarPickerScreen } from "./AvatarPickerScreen";
 import { COUNTRIES, SERVICES } from "../data";
 
 const DETECTED = SERVICES.filter((s) => s.detected).map((s) => s.name);
+const AVATAR_PREVIEW: AvatarConfig = { hue: "coral", shape: "round", face: "smile", duo: null };
 
-export function OnboardingScreen({ onDone }: { onDone: (services: string[], country: string, name: string) => void }) {
+export function OnboardingScreen({ onDone }: { onDone: (services: string[], country: string, name: string, avatar: AvatarConfig | null) => void }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
@@ -23,14 +26,28 @@ export function OnboardingScreen({ onDone }: { onDone: (services: string[], coun
     () => Object.fromEntries(SERVICES.filter((s) => s.detected).map((s) => [s.id, true])),
   );
   const [name, setName] = useState("");
+  const [avatar, setAvatar] = useState<AvatarConfig | null>(null);
+  // The Disco picker opens as a LOCAL overlay so onboarding `step` survives the round-trip
+  // (the design reaches it via a global route; here we keep the screen mounted instead).
+  const [showPicker, setShowPicker] = useState(false);
 
   const count = Object.values(services).filter(Boolean).length;
   const check = <Text style={[t.type.label, { color: t.color.ink }]}>✓</Text>;
 
   const next = () => {
     if (step < 2) setStep(step + 1);
-    else onDone(SERVICES.filter((s) => services[s.id]).map((s) => s.id), country, name.trim());
+    else onDone(SERVICES.filter((s) => services[s.id]).map((s) => s.id), country, name.trim(), avatar);
   };
+
+  if (showPicker)
+    return (
+      <AvatarPickerScreen
+        mode="onboarding"
+        avatar={avatar}
+        onSave={(a) => { setAvatar(a); setShowPicker(false); }}
+        onBack={() => setShowPicker(false)}
+      />
+    );
 
   const cta =
     step === 0 ? "That’s right"
@@ -97,6 +114,18 @@ export function OnboardingScreen({ onDone }: { onDone: (services: string[], coun
             <Micro>Step 3 of 3</Micro>
             <Headline>What should we call you?</Headline>
             <Body size="l">Optional. It’s how friends will see your picks when you decide together.</Body>
+            <Pressable
+              onPress={() => setShowPicker(true)}
+              accessibilityLabel="Choose your Disco"
+              style={{ flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: t.color.surface, borderRadius: t.radius.md, paddingVertical: 12, paddingHorizontal: 14 }}
+            >
+              <Avatar person={{ name: name || "You", initial: (name || "Y")[0].toUpperCase(), avatar: avatar || AVATAR_PREVIEW }} size={48} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={[t.type.label, { color: t.color.ink }]}>Your Disco</Text>
+                <Text style={[t.type.caption, { color: t.color.inkSecondary }]}>{avatar ? `${avatar.hue} · ${avatar.shape} · ${avatar.face}` : "Pick a colour, shape and face"}</Text>
+              </View>
+              <Text style={[t.type.label, { color: t.color.inkSecondary }]}>{avatar ? "Change" : "Choose"}</Text>
+            </Pressable>
             <View style={{ borderBottomWidth: 1, borderBottomColor: t.color.hairlineStrong, paddingTop: 8, paddingBottom: 12 }}>
               <TextInput
                 value={name}

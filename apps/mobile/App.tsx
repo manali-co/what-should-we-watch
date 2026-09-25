@@ -157,9 +157,10 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
   const persist = (next: { services?: string[]; onboarded?: boolean; bioAsked?: boolean; country?: string; displayName?: string; guest?: boolean; dismissedNudges?: Record<string, boolean>; shortlist?: Film[]; decisions?: number; seenIds?: string[]; avatar?: AvatarConfig | null }) =>
     AsyncStorage.setItem(STORE, JSON.stringify({ services, onboarded, bioAsked, country, displayName, guest, dismissedNudges, shortlist, decisions, seenIds, avatar, ...next })).catch(() => {});
   const saveAvatar = (a: AvatarConfig) => { setAvatar(a); persist({ avatar: a }); setShowAvatar(false); };
-  const finishOnboarding = (svcs: string[], countryName: string, name: string) => {
+  const finishOnboarding = (svcs: string[], countryName: string, name: string, chosenAvatar: AvatarConfig | null) => {
     setServices(svcs); setCountry(countryName); setDisplayName(name); setOnboarded(true);
-    persist({ services: svcs, country: countryName, displayName: name, onboarded: true });
+    if (chosenAvatar) setAvatar(chosenAvatar);
+    persist({ services: svcs, country: countryName, displayName: name, onboarded: true, ...(chosenAvatar ? { avatar: chosenAvatar } : {}) });
   };
   const toggleService = (s: string) => { const n = services.includes(s) ? services.filter((x) => x !== s) : [...services, s]; setServices(n); persist({ services: n }); };
   const addToShortlist = (films: Film[]) => {
@@ -273,6 +274,7 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
                 films={shortlist}
                 onRemove={(id) => setShortlist((p) => p.filter((f) => f.id !== id))}
                 onWatch={(f) => f.link && Linking.openURL(f.link).catch(() => {})}
+                onBrowse={() => setTab("tonight")}
                 showNudge={guest && !isSignedIn && shortlist.length >= 3 && !dismissedNudges.shortlist}
                 onNudgeSignIn={openSignIn}
                 onNudgeDismiss={() => dismissNudge("shortlist")}

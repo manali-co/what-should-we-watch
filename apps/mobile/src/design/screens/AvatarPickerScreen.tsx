@@ -28,7 +28,9 @@ export function AvatarPickerScreen({
   const t = useTheme();
   const cur = avatar || DEFAULT;
   const [av, setAv] = useState<AvatarConfig>(cur);
-  const dirty = JSON.stringify(av) !== JSON.stringify(cur);
+  // With no committed avatar yet (first-time / onboarding), any state — including the default
+  // preview — is a valid choice, so allow confirming it. Otherwise require an actual change.
+  const dirty = !avatar || JSON.stringify(av) !== JSON.stringify(cur);
 
   const shuffle = () =>
     setAv({

@@ -101,6 +101,16 @@ test.describe("guest flow (web)", () => {
     // …and the "we've learned a fair bit about you" nudge must not appear before we have.
     await expect(page.getByText("This is only on this phone")).toHaveCount(0);
   });
+
+  test("empty shortlist shows the Disco empty-state with a Deal ten CTA", async ({ page }) => {
+    await enterAsGuest(page);
+    await completeOnboarding(page);
+    await page.getByTestId("tab-shortlist").click();
+    await expect(page.getByText("Nothing shortlisted yet.")).toBeVisible({ timeout: 15_000 });
+    // The CTA returns to Tonight (the mood screen).
+    await page.getByText("Deal ten", { exact: true }).click();
+    await expect(page.getByText(/feels like/)).toBeVisible({ timeout: 10_000 });
+  });
 });
 
 test.describe("Disco avatar picker (web)", () => {
@@ -118,6 +128,20 @@ test.describe("Disco avatar picker (web)", () => {
     await page.getByText("Save", { exact: true }).click();
     // Back on the mood screen.
     await expect(page.getByText(/feels like/)).toBeVisible({ timeout: 10_000 });
+  });
+
+  test("the picker opens from onboarding step 3 and returns to the same step", async ({ page }) => {
+    await enterAsGuest(page);
+    await page.getByText("That’s right").click(); // step 1 -> 2
+    await page.getByText(/Continue with \d+ services?/).click(); // step 2 -> 3
+    await expect(page.getByText("What should we call you?")).toBeVisible();
+    await page.getByLabel("Choose your Disco").click();
+    await expect(page.getByText("Your Disco.")).toBeVisible({ timeout: 15_000 });
+    await page.getByLabel("next Shape").click(); // make it dirty
+    await page.getByText("Use this", { exact: true }).click();
+    // Round-trip preserved onboarding step 3 (not reset to step 1).
+    await expect(page.getByText("What should we call you?")).toBeVisible();
+    await expect(page.getByText("Change", { exact: true })).toBeVisible(); // row now says "Change"
   });
 });
 
