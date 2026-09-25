@@ -46,6 +46,23 @@ class DecisionsRepo:
         rows.sort(key=lambda r: r.get("at", 0), reverse=True)
         return rows[:limit]
 
+    def export_for_user(self, user_id: str) -> list[dict[str, Any]]:
+        """Every decision row for the user — for the data export."""
+        return self._c.query(
+            "SELECT * FROM c WHERE c.userId = @u",
+            [{"name": "@u", "value": user_id}], pk=user_id,
+        )
+
+    def purge_for_user(self, user_id: str) -> int:
+        """Delete every decision row for the user — for account deletion. Returns count."""
+        rows = self._c.query(
+            "SELECT c.id FROM c WHERE c.userId = @u",
+            [{"name": "@u", "value": user_id}], pk=user_id,
+        )
+        for r in rows:
+            self._c.delete(r["id"], user_id)
+        return len(rows)
+
     def stats(self, user_id: str) -> dict[str, Any]:
         """Real, honest tallies for the Taste screen — no fabricated data.
         Cold start (no decisions) returns zeroes so the UI can say 'still learning'."""

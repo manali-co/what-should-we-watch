@@ -27,11 +27,15 @@ def test_find_by_provider() -> None:
     assert r.find_by_provider("apple", "g-42") is None
 
 
-def test_soft_delete_sets_timestamp_but_keeps_row() -> None:
+def test_soft_delete_scrubs_pii_and_keeps_tombstone() -> None:
     r = repo()
-    u = UsersRepo.new("apple", "sub-2", None)
+    u = UsersRepo.new("apple", "sub-2", "Alex")
     r.upsert(u)
+    assert r.find_by_provider("apple", "sub-2") is not None
     r.soft_delete(u.id)
     got = r.get(u.id)
-    assert got is not None
+    assert got is not None                              # tombstone kept
     assert got.deleted_at is not None
+    assert got.display_name is None                     # name scrubbed
+    assert got.providers == []                          # identity scrubbed
+    assert r.find_by_provider("apple", "sub-2") is None  # can no longer be re-linked
