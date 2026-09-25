@@ -38,8 +38,13 @@ class CatalogRepo:
         self._c = container
 
     def deck(self, country: str, services: list[str], limit: int = 10) -> list[dict[str, Any]]:
+        # Project ONLY the display fields. `SELECT *` dragged each doc's 3072-float embedding
+        # vector (and vibeLine) across the wire for every film in the country — tens of MB per
+        # deck request, and 6–13s of latency — all of it discarded here. The ranked/recs path
+        # keeps the embeddings it needs; this popularity read never touches them.
         rows = self._c.query(
-            "SELECT * FROM c WHERE c.country = @country",
+            "SELECT c.id, c.title, c.year, c.runtimeMin, c.rating, c.overview, "
+            "c.poster, c.availability FROM c WHERE c.country = @country",
             [{"name": "@country", "value": country}],
             pk=country,
         )
