@@ -7,6 +7,7 @@ import { serviceLabel } from "../../films";
 import { countryCode, hueOf } from "../data";
 import { currentGreeting } from "../greeting";
 import type { MoodHue } from "../tokens";
+import type { AvatarConfig } from "../DiscAvatar";
 import { MoodScreen } from "./MoodScreen";
 import { ThinkingScreen } from "./ThinkingScreen";
 import { DeckScreen } from "./DeckScreen";
@@ -18,10 +19,10 @@ const COMPANY: Record<string, string> = { me: "solo", two: "couple", group: "fri
 type Phase = "mood" | "thinking" | "deck" | "end" | "empty" | "error";
 
 export function TonightFlow({
-  services, seenIds, onKeep, onDecided, onOpenSettings, onOpenShortlist, onImmersive, firstTime, userInitial, userName, onTutorialSeen, country,
+  services, seenIds, onKeep, onDecided, onOpenSettings, onOpenShortlist, onImmersive, firstTime, userInitial, userName, avatar, onOpenAvatar, onTutorialSeen, country,
 }: {
   services: string[]; seenIds?: string[]; onKeep: (films: Film[]) => void; onDecided?: (filmId: string) => void; onOpenSettings: () => void;
-  onOpenShortlist: () => void; onImmersive?: (immersive: boolean) => void; firstTime?: boolean; userInitial?: string; userName?: string; onTutorialSeen?: () => void; country?: string;
+  onOpenShortlist: () => void; onImmersive?: (immersive: boolean) => void; firstTime?: boolean; userInitial?: string; userName?: string; avatar?: AvatarConfig | null; onOpenAvatar?: () => void; onTutorialSeen?: () => void; country?: string;
 }) {
   const [phase, setPhase] = useState<Phase>("mood");
   const [moods, setMoods] = useState<string[]>([]);
@@ -82,8 +83,9 @@ export function TonightFlow({
       <MoodScreen
         onDeal={(picked, who) => deal(picked, who)}
         onOpenSettings={onOpenSettings}
-        onOpenProfile={onOpenSettings}
+        onOpenProfile={onOpenAvatar ?? onOpenSettings}
         userInitial={userInitial}
+        avatar={avatar}
         greeting={currentGreeting(userName, !!firstTime)}
       />
     );

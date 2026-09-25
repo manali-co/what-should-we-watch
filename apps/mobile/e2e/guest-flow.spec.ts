@@ -103,6 +103,24 @@ test.describe("guest flow (web)", () => {
   });
 });
 
+test.describe("Disco avatar picker (web)", () => {
+  test.beforeEach(async ({ page }) => { await mockApi(page); });
+
+  test("a guest can open the picker from the mood header, change and save a Disco", async ({ page }) => {
+    await enterAsGuest(page);
+    await completeOnboarding(page);
+    // The mood-header avatar opens the picker (the design's `onSelf`).
+    await page.getByLabel("Change your Disco").first().click();
+    await expect(page.getByText("Your Disco.")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("swipe it · ↔ face · ↕ colour")).toBeVisible();
+    // Save is disabled until something changes; stepping a dial makes it dirty.
+    await page.getByLabel("next Colour").click();
+    await page.getByText("Save", { exact: true }).click();
+    // Back on the mood screen.
+    await expect(page.getByText(/feels like/)).toBeVisible({ timeout: 10_000 });
+  });
+});
+
 // The deck's PanResponder responds to touch events, not synthetic mouse drags, so a
 // right-swipe is driven by dispatching a real touch sequence on the top card.
 async function swipeRight(page: Page, title: string) {

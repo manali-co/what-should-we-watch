@@ -8,9 +8,11 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 }
 const growAnim = () => LayoutAnimation.configureNext(LayoutAnimation.create(220, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.scaleXY));
 import { Avatar, Blend, Headline, Micro, Screen, TopRow } from "../primitives";
+import { Mascot } from "../Mascot";
 import { Button, Pill } from "../controls";
 import { useTheme } from "../tokens";
 import type { MoodHue } from "../tokens";
+import type { AvatarConfig } from "../DiscAvatar";
 import { MOODS, hueOf } from "../data";
 
 export type Custom = { text: string; hue: MoodHue };
@@ -21,7 +23,7 @@ const CUSTOM_LIMIT = 80;
 const CUSTOM_EXAMPLES = ["something to fall asleep to", "movies like Arrival but lighter", "a film my dad would love", "ninety minutes, no thinking"];
 
 type Greeting = { text: string; size: "xl" | "l" | "m"; label?: string };
-export function MoodScreen({ onDeal, onOpenSettings, onOpenProfile, userInitial, greeting = { text: "Tonight feels like…", size: "xl" } }: { onDeal: (moods: string[], who: string, hours: string) => void; onOpenSettings: () => void; onOpenProfile?: () => void; userInitial?: string; greeting?: Greeting }) {
+export function MoodScreen({ onDeal, onOpenSettings, onOpenProfile, userInitial, avatar, greeting = { text: "Tonight feels like…", size: "xl" } }: { onDeal: (moods: string[], who: string, hours: string) => void; onOpenSettings: () => void; onOpenProfile?: () => void; userInitial?: string; avatar?: AvatarConfig | null; greeting?: Greeting }) {
   const t = useTheme();
   const [selected, setSelected] = useState<string[]>([]);
   const [customs, setCustoms] = useState<Custom[]>([]);
@@ -39,8 +41,8 @@ export function MoodScreen({ onDeal, onOpenSettings, onOpenProfile, userInitial,
       {/* Header row: group avatars + settings */}
       <TopRow
         left={
-          <Pressable onPress={onOpenProfile ?? onOpenSettings} hitSlop={8}>
-            {userInitial ? <Avatar person={{ name: "You", initial: userInitial }} ring={hues.length ? hues[0] : null} /> : <View style={{ width: 32, height: 32, borderRadius: 999, borderWidth: 1, borderColor: t.color.hairlineStrong }} />}
+          <Pressable onPress={onOpenProfile ?? onOpenSettings} hitSlop={8} accessibilityLabel="Change your Disco">
+            {avatar || userInitial ? <Avatar person={{ name: "You", initial: userInitial || "Y", avatar }} ring={hues.length ? hues[0] : null} /> : <View style={{ width: 32, height: 32, borderRadius: 999, borderWidth: 1, borderColor: t.color.hairlineStrong }} />}
           </Pressable>
         }
         right={
@@ -52,7 +54,12 @@ export function MoodScreen({ onDeal, onOpenSettings, onOpenProfile, userInitial,
 
       {/* Headline + picked words + sentence */}
       <View style={{ paddingTop: t.space[5], gap: t.space[3] }}>
-        {greeting.label ? <Micro>{greeting.label}</Micro> : null}
+        {greeting.label ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Mascot state="idle" size={32} />
+            <Micro>{greeting.label}</Micro>
+          </View>
+        ) : null}
         <Headline size={greeting.size}>{greeting.text}</Headline>
         <View style={{ minHeight: 32, flexDirection: "row", flexWrap: "wrap", alignItems: "center" }}>
           {words.length === 0 ? (

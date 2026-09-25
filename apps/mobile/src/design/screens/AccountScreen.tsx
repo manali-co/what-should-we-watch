@@ -3,20 +3,24 @@
 // (delete is an App Store requirement for account-based apps). Export shares the local
 // decision data; a full server-side export is a follow-up.
 import { useEffect, useState } from "react";
-import { ScrollView, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Avatar, Body, Headline, Micro, Screen, TopRow } from "../primitives";
 import { Button, Pill, PillRow } from "../controls";
 import { ListRow, SectionLabel } from "../surfaces";
 import { Sheet } from "../sheet";
 import { useTheme } from "../tokens";
+import type { AvatarConfig } from "../DiscAvatar";
 
 type Provider = "google" | "apple" | "email";
 
 export function AccountScreen({
   name: initialName, email, provider, appleConnected, googleConnected, memberSince, decisionCount = 0,
+  avatar, onOpenAvatar,
   onBack, onSaveName, onLogout, onDelete, onExport,
 }: {
   name: string; email?: string; provider: Provider; appleConnected?: boolean; googleConnected?: boolean; memberSince?: string; decisionCount?: number;
+  avatar?: AvatarConfig | null;
+  onOpenAvatar: () => void;
   onBack: () => void;
   onSaveName: (name: string) => void;
   onLogout: () => void;
@@ -48,7 +52,12 @@ export function AccountScreen({
       />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: t.space[9] }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingTop: t.space[4], flexDirection: "row", alignItems: "center", gap: 14 }}>
-          <Avatar person={{ name: name || "You", initial: (name || "Y")[0].toUpperCase() }} size={56} />
+          <Pressable onPress={onOpenAvatar} accessibilityLabel="Change your Disco" style={{ position: "relative" }}>
+            <Avatar person={{ name: name || "You", initial: (name || "Y")[0].toUpperCase(), avatar }} size={56} />
+            <View style={{ position: "absolute", right: -4, bottom: -4, width: 22, height: 22, borderRadius: 999, backgroundColor: t.color.ink, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: t.color.bg }}>
+              <Text style={{ color: t.color.inkInverse, fontFamily: t.fontFamily.bodyMedium, fontSize: 12 }}>✎</Text>
+            </View>
+          </Pressable>
           <View style={{ flex: 1, gap: 4 }}>
             <Micro>Display name</Micro>
             <TextInput
@@ -62,6 +71,12 @@ export function AccountScreen({
             <Body tone="tertiary" style={t.type.caption}>How friends see your picks in group mode.</Body>
           </View>
         </View>
+
+        <ListRow
+          title="Your Disco"
+          subtitle={avatar ? `${avatar.hue} · ${avatar.shape} · ${avatar.face}${avatar.duo ? " · blend" : ""}` : "Pick a colour, shape and face"}
+          chevron last onPress={onOpenAvatar} style={{ marginTop: t.space[3] }}
+        />
 
         <SectionLabel>Email</SectionLabel>
         <ListRow title={displayEmail} subtitle="Used for codes and the export link" last />
