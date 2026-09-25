@@ -185,7 +185,7 @@ THE SHORTLIST (films the room kept):
 Rules:
 - "order": every shortlist id, best-for-the-group first.
 - "picks": for EACH id a "why" of at most 22 words. For the #1, name how it works across the different people (e.g. "cosy enough for Jo, strange enough for Sam, short enough for Ana").
-- "verdict": one confident line naming the #1 as the group's watch tonight, at most 22 words.
+- "verdict": a SHORT, punchy line naming the #1 as the group's watch — at most 6 words, no reasoning (e.g. "Tonight, it's Paddington 2."). The reason belongs in that film's "why", not here.
 - Use only ids from the shortlist; never invent a film.{_SHORTLIST_JSON}"""
 
     return f"""You are the taste engine calling what ONE viewer should watch tonight, from the films they kept. Rank so #1 is the single best call for THIS viewer, right now — the strongest fit of their taste, tonight's mood, and the moment. Break ties toward what leaves the service soonest and toward what their history says they'd actually finish.
@@ -202,7 +202,7 @@ THE SHORTLIST (films they kept, with how they swiped):
 Rules:
 - "order": every shortlist id, best-first.
 - "picks": for EACH id a "why" of at most 22 words, second person, tied to their taste, the mood, or the moment. No generic praise, no spoilers.
-- "verdict": one confident line — the title and the reason it's tonight's one — at most 22 words.
+- "verdict": a SHORT, punchy line naming the #1 as tonight's watch — at most 6 words, no reasoning (e.g. "Tonight: Black Bag."). The reason belongs in that film's "why", not here.
 - Use only ids from the shortlist; never invent a film.{_SHORTLIST_JSON}"""
 
 
