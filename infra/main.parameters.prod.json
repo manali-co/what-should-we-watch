@@ -10,6 +10,9 @@
     },
     "openaiEndpoint": {
       "value": "https://wsww-prod-ai.cognitiveservices.azure.com/"
+    },
+    "clerkIssuer": {
+      "value": "https://clerk.manali.co"
     }
   }
 }

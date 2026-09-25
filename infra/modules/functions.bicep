@@ -6,6 +6,7 @@ param keyVaultUri string
 param env string
 @description('Azure OpenAI (AI Foundry) endpoint — without it the recs engine is disabled and the deck falls back to popularity')
 param openaiEndpoint string
+param clerkIssuer string
 
 var storageName = take(toLower(replace('${prefix}fnst', '-', '')), 24)
 
@@ -59,6 +60,7 @@ resource fn 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'WSWW_OPENAI_ENDPOINT', value: openaiEndpoint }
         { name: 'WSWW_EMBEDDING_DEPLOYMENT', value: 'text-embedding-3-large' }
         { name: 'WSWW_RANKING_DEPLOYMENT', value: 'gpt-5.4-mini' }
+        { name: 'WSWW_CLERK_ISSUER', value: clerkIssuer }
       ]
     }
   }
