@@ -37,11 +37,23 @@ jobs:
                  --jq 'map(select(.state == "open")) | .[0].number // empty')
           if [ -z "$pr" ]; then echo "No open PR for $HEAD_SHA — nothing to merge."; exit 0; fi
 
-          json=$(gh pr view "$pr" --repo "$REPO" --json author,headRefName,title,isDraft)
+          json=$(gh pr view "$pr" --repo "$REPO" --json author,authorAssociation,headRefName,title,isDraft)
           author=$(printf '%s' "$json" | jq -r '.author.login')
+          assoc=$(printf '%s'  "$json" | jq -r '.authorAssociation')
           head=$(printf '%s'   "$json" | jq -r '.headRefName')
           title=$(printf '%s'  "$json" | jq -r '.title')
           draft=$(printf '%s'  "$json" | jq -r '.isDraft')
+
+          # Author trust gate (supply-chain): only auto-merge PRs from the repo owner / an org
+          # member / a collaborator, or the known chore bots. An outsider PR — even one titled
+          # "chore:" with passing CI — is never auto-merged.
+          trusted=false
+          case "$assoc"  in OWNER|MEMBER|COLLABORATOR) trusted=true ;; esac
+          case "$author" in dependabot*|renovate*|github-actions*) trusted=true ;; esac
+          if [ "$trusted" != "true" ]; then
+            echo "PR #$pr author '$author' ($assoc) is not trusted — not auto-merging."
+            exit 0
+          fi
 
           chore=false
           case "$head"  in chore/*) chore=true ;; esac
