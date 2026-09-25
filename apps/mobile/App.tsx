@@ -202,7 +202,7 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
       return;
     }
     void signOut(); AsyncStorage.removeItem(STORE).catch(() => {});
-    setShowAccount(false); setGuest(false); setStarted(false); setServices([]); setOnboarded(false); setShortlist([]); setDecisions(0); setSeenIds([]); setTab("tonight");
+    setShowAccount(false); setGuest(false); setStarted(false); setServices([]); setOnboarded(false); setShortlist([]); setDecisions(0); setSeenIds([]); setSeenTutorial(0); setAvatar(null); setTab("tonight");
   };
   const logout = () => { void signOut(); setShowAccount(false); setStarted(false); setTab("tonight"); };
 
