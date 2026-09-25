@@ -2,12 +2,18 @@ import { FontAwesome } from "@expo/vector-icons";
 import { useBiometricCredentials, useSignIn, useSignUp, useSSO } from "@clerk/expo";
 import { useSignInWithApple } from "@clerk/expo/apple";
 import * as AppleAuthentication from "expo-apple-authentication";
+import * as AuthSession from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { font, theme } from "./theme";
+
+// Required for native OAuth (Google): lets the auth browser redirect back into the app and
+// complete the session. Without it the browser opens but never returns — sign-in hangs.
+WebBrowser.maybeCompleteAuthSession();
 
 const noNavigate = () => {}; // state-based app; finalize activates the session, the gate re-renders
 
@@ -33,10 +39,14 @@ export function SignIn({ onCancel }: { onCancel?: () => void } = {}) {
   const oauth = async (strategy: "oauth_google" | "oauth_apple") => {
     setErr(null); setBusy(true);
     try {
-      const { createdSessionId, setActive } = await startSSOFlow({ strategy });
+      const { createdSessionId, setActive } = await startSSOFlow({
+        strategy,
+        redirectUrl: AuthSession.makeRedirectUri(),
+      });
       if (createdSessionId && setActive) await setActive({ session: createdSessionId });
       // no session + no throw = user cancelled; don't show an error
-    } catch {
+    } catch (e) {
+      console.warn("SSO sign-in failed", e); // surfaces the real cause in device logs
       setErr("That didn't go through. Try again.");
     } finally { setBusy(false); }
   };
@@ -84,6 +94,7 @@ export function SignIn({ onCancel }: { onCancel?: () => void } = {}) {
       // no session + no throw = user cancelled; don't show an error
     } catch (e: unknown) {
       if ((e as { code?: string })?.code === "ERR_REQUEST_CANCELED") return; // user tapped Cancel
+      console.warn("Apple sign-in failed", e); // surfaces the real cause in device logs
       setErr("Apple sign-in didn't go through. Try again.");
     } finally { setBusy(false); }
   };
