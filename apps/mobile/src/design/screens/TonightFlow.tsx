@@ -27,10 +27,10 @@ type Phase = "predict" | "quick" | "mood" | "thinking" | "deck" | "end" | "empty
 type Prediction = { moods: string[]; films: Film[]; because?: string };
 
 export function TonightFlow({
-  services, seenIds, onKeep, onDecided, onOpenSettings, onOpenShortlist, onImmersive, firstTime, userInitial, userName, avatar, onOpenAvatar, onTutorialSeen, country,
+  services, seenIds, onKeep, onDecided, onOpenSettings, onOpenShortlist, onImmersive, firstTime, tutorialUnseen, userInitial, userName, avatar, onOpenAvatar, onTutorialSeen, country,
 }: {
   services: string[]; seenIds?: string[]; onKeep: (films: Film[]) => void; onDecided?: (filmId: string) => void; onOpenSettings: () => void;
-  onOpenShortlist: () => void; onImmersive?: (immersive: boolean) => void; firstTime?: boolean; userInitial?: string; userName?: string; avatar?: AvatarConfig | null; onOpenAvatar?: () => void; onTutorialSeen?: () => void; country?: string;
+  onOpenShortlist: () => void; onImmersive?: (immersive: boolean) => void; firstTime?: boolean; tutorialUnseen?: boolean; userInitial?: string; userName?: string; avatar?: AvatarConfig | null; onOpenAvatar?: () => void; onTutorialSeen?: () => void; country?: string;
 }) {
   // Returning users open on a prediction (fetched below); first-timers go straight to the picker.
   const [phase, setPhase] = useState<Phase>(firstTime ? "mood" : "predict");
@@ -122,8 +122,8 @@ export function TonightFlow({
     if (phase !== "thinking" || !thinkingDone || pending) return;
     if (failed) setPhase("error");
     else if (!films.length) setPhase("empty");
-    else { setShowTutorial(!!firstTime); setPhase("deck"); }
-  }, [phase, thinkingDone, pending, failed, films, firstTime]);
+    else { setShowTutorial(!!tutorialUnseen); setPhase("deck"); }
+  }, [phase, thinkingDone, pending, failed, films, tutorialUnseen]);
 
   const onDecision = (film: Film, action: "like" | "dislike" | "maybe" | "watched", reaction?: "loved" | "okay" | "disliked") => {
     onDecided?.(film.id);
