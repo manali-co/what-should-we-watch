@@ -4,6 +4,8 @@ param appInsightsConnectionString string
 param cosmosEndpoint string
 param keyVaultUri string
 param env string
+@description('Azure OpenAI (AI Foundry) endpoint — without it the recs engine is disabled and the deck falls back to popularity')
+param openaiEndpoint string
 
 var storageName = take(toLower(replace('${prefix}fnst', '-', '')), 24)
 
@@ -54,6 +56,9 @@ resource fn 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'WSWW_COSMOS_DATABASE', value: 'wsww' }
         { name: 'WSWW_KEYVAULT_URI', value: keyVaultUri }
         { name: 'WSWW_SIGNING_KEY_NAME', value: 'wsww-api-signing' }
+        { name: 'WSWW_OPENAI_ENDPOINT', value: openaiEndpoint }
+        { name: 'WSWW_EMBEDDING_DEPLOYMENT', value: 'text-embedding-3-large' }
+        { name: 'WSWW_RANKING_DEPLOYMENT', value: 'gpt-5.4-mini' }
       ]
     }
   }
