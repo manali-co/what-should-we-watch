@@ -144,7 +144,15 @@ export type TasteProfile = {
 // The viewer's real taste: the engine's running notes + honest tallies. Cold-start
 // (a new or guest viewer) comes back all-zero, so the UI can be truthful, not invented.
 export async function fetchTaste(): Promise<TasteProfile> {
-  const r = await fetch(`${API_BASE}/v1/catalog/taste`, { headers: await authHeaders() });
-  if (!r.ok) throw new Error(`taste ${r.status}`);
-  return (await r.json()) as TasteProfile;
+  // Bound the request: fetch has no default timeout in RN, and the predicted-mood path shows a
+  // spinner until this resolves — a hung /taste must not strand the returning user there.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const r = await fetch(`${API_BASE}/v1/catalog/taste`, { headers: await authHeaders(), signal: ctrl.signal });
+    if (!r.ok) throw new Error(`taste ${r.status}`);
+    return (await r.json()) as TasteProfile;
+  } finally {
+    clearTimeout(timer);
+  }
 }

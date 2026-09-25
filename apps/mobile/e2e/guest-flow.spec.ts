@@ -79,9 +79,11 @@ test.describe("returning-user prediction (web)", () => {
     await expect(page.getByText(/We think tonight feels like/)).toBeVisible({ timeout: 25_000 });
     await page.getByText(/Tap to preview/).click();
     await expect(page.getByText("Three we’re fairly sure about.")).toBeVisible({ timeout: 15_000 });
-    // Steer to the picker.
+    // Steer to the picker — assert a picker-only control (the prediction heading also matches
+    // /feels like/, so this must key off something that appears only in the mood picker).
     await page.getByText("Not quite — pick moods myself").click();
-    await expect(page.getByText(/feels like/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Surprise us")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("mind-bender", { exact: true })).toBeVisible();
   });
 });
 

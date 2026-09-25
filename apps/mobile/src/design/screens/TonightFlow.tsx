@@ -153,7 +153,7 @@ export function TonightFlow({
   if (phase === "quick" && prediction)
     return (
       <QuickRecsScreen
-        films={prediction.films}
+        films={prediction.films.slice(0, 3)}
         moods={prediction.moods}
         onBack={() => setPhase("predict")}
         onSeeDeck={() => dealWithDeck(prediction.moods, prediction.films)}

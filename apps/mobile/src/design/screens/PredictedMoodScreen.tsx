@@ -3,7 +3,7 @@
 // line, and a fanned preview of the ready picks (tap to preview). Accept deals them, or steer
 // to the mood picker. Presentational; the prediction is supplied by the caller (from /taste).
 import { Fragment } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Body, Headline, Micro, Screen, TopRow } from "../primitives";
 import { Avatar } from "../primitives";
 import { Mascot } from "../Mascot";
@@ -53,53 +53,58 @@ export function PredictedMoodScreen({
         }
       />
 
-      <View style={{ paddingTop: t.space[5], gap: t.space[3] }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <Mascot state="found" size={56} />
-          {context ? <Micro>{context}</Micro> : null}
+      {/* Scrollable so the actions below stay reachable on short screens / large text. */}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: t.space[5], paddingBottom: t.space[4] }} showsVerticalScrollIndicator={false}>
+        <View style={{ gap: t.space[3] }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Mascot state="found" size={56} />
+            {context ? <Micro>{context}</Micro> : null}
+          </View>
+          <Headline size="l">
+            We think tonight feels like{" "}
+            <Headline size="l" style={{ color: t.color.mood[hues[0]].ink }}>{moods[0]}</Headline>
+            {moods[1] ? (
+              <Fragment>
+                , maybe <Headline size="l" style={{ color: t.color.mood[hues[1]].ink }}>{moods[1]}</Headline>
+              </Fragment>
+            ) : null}
+            .
+          </Headline>
+          {because ? <Body>{because}</Body> : null}
         </View>
-        <Headline size="l">
-          We think tonight feels like{" "}
-          <Headline size="l" style={{ color: t.color.mood[hues[0]].ink }}>{moods[0]}</Headline>
-          {moods[1] ? (
-            <Fragment>
-              , maybe <Headline size="l" style={{ color: t.color.mood[hues[1]].ink }}>{moods[1]}</Headline>
-            </Fragment>
-          ) : null}
-          .
-        </Headline>
-        {because ? <Body>{because}</Body> : null}
-      </View>
 
-      {/* Fanned preview of the ready picks — tap to preview the quick-recs. */}
-      <Pressable onPress={onPreview} accessibilityLabel="Preview the ready picks" style={{ marginTop: t.space[5] }}>
-        <View style={{ height: 262, marginTop: 12 }}>
-          {preview.map((f, i) => {
-            const n = preview.length;
-            const k = i - (n - 1) / 2;
-            return (
-              <View
-                key={f.id}
-                style={{
-                  position: "absolute", left: "50%", top: 0, width: 164, height: 246, marginLeft: -82,
-                  transform: [{ translateX: k * 66 }, { rotate: `${k * 6}deg` }, { translateY: Math.abs(k) * 10 }],
-                  zIndex: n - Math.abs(k) * 2 + (k > 0 ? 1 : 0),
-                  borderRadius: t.radius.md, ...t.elevation.card,
-                }}
-              >
-                <Poster title={f.title} tint={tintFor(f.id)} posterUrl={f.posterUrl} width={164} height={246} radius={t.radius.md} />
-                <View style={{ position: "absolute", left: 12, right: 12, bottom: 12, gap: 2 }}>
-                  <Text numberOfLines={2} style={{ color: "#F2F1EE", fontFamily: t.fontFamily.display, fontSize: 15, letterSpacing: -0.15 }}>{f.title}</Text>
-                  <Text style={{ color: "rgba(242,241,238,0.7)", fontFamily: t.fontFamily.body, fontSize: 12 }}>{serviceLabel(f.service)} · {formatRuntime(f.runtimeMin)}</Text>
+        {/* Fanned preview of the ready picks — tap to preview the quick-recs. */}
+        <Pressable onPress={onPreview} accessibilityLabel="Preview the ready picks" style={{ marginTop: t.space[5] }}>
+          <View style={{ height: 262, marginTop: 12 }}>
+            {preview.map((f, i) => {
+              const n = preview.length;
+              const k = i - (n - 1) / 2;
+              return (
+                <View
+                  key={f.id}
+                  style={{
+                    position: "absolute", left: "50%", top: 0, width: 164, height: 246, marginLeft: -82,
+                    transform: [{ translateX: k * 66 }, { rotate: `${k * 6}deg` }, { translateY: Math.abs(k) * 10 }],
+                    zIndex: n - Math.abs(k) * 2 + (k > 0 ? 1 : 0),
+                    borderRadius: t.radius.md, ...t.elevation.card,
+                  }}
+                >
+                  <Poster title={f.title} tint={tintFor(f.id)} posterUrl={f.posterUrl} width={164} height={246} radius={t.radius.md} />
+                  <View style={{ position: "absolute", left: 12, right: 12, bottom: 12, gap: 2 }}>
+                    <Text numberOfLines={2} style={{ color: "#F2F1EE", fontFamily: t.fontFamily.display, fontSize: 15, letterSpacing: -0.15 }}>{f.title}</Text>
+                    <Text style={{ color: "rgba(242,241,238,0.7)", fontFamily: t.fontFamily.body, fontSize: 12 }}>{serviceLabel(f.service)} · {formatRuntime(f.runtimeMin)}</Text>
+                  </View>
                 </View>
-              </View>
-            );
-          })}
-        </View>
-        <Body tone="tertiary" style={[t.type.caption, { textAlign: "center", marginTop: 8 }]}>Three ready now, seven more in the deck. Tap to preview.</Body>
-      </Pressable>
+              );
+            })}
+          </View>
+          <Body tone="tertiary" style={[t.type.caption, { textAlign: "center", marginTop: 8 }]}>
+            {preview.length} ready now{films.length > preview.length ? `, ${films.length - preview.length} more in the deck` : ""}. Tap to preview.
+          </Body>
+        </Pressable>
+      </ScrollView>
 
-      <View style={{ marginTop: "auto", gap: t.space[2], paddingTop: t.space[4], paddingBottom: t.space[3] }}>
+      <View style={{ gap: t.space[2], paddingTop: t.space[3], paddingBottom: t.space[3] }}>
         <Button variant="primary" size="lg" full onPress={onAccept}>Sounds right, deal them</Button>
         <Button variant="ghost" full onPress={onPickMyself}>Not quite — pick moods myself</Button>
       </View>
