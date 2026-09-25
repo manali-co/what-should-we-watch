@@ -10,7 +10,7 @@ authors:
     given-names: "Ayush"
 repository-code: "https://github.com/manali-co/what-should-we-watch"
 url: "https://github.com/manali-co/what-should-we-watch"
-license: "LicenseRef-Proprietary"
+license-url: "https://github.com/manali-co/what-should-we-watch/blob/main/LICENSE"
 version: "0.1.2"
 date-released: "2026-09-24"
 keywords:
