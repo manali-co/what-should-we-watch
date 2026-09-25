@@ -1,5 +1,22 @@
+import time
+
 from wsww_api.db import InMemoryContainer
 from wsww_api.repositories import CatalogRepo
+
+
+def test_deck_excludes_expired_availability() -> None:
+    c = InMemoryContainer()
+    repo = CatalogRepo(c)
+    past = int(time.time()) - 86400  # left the service yesterday
+    c.upsert({"id": "live", "_pk": "us", "country": "us", "title": "Live", "rating": 80,
+              "poster": {"url": "http://p/1.jpg"}, "overview": "x",
+              "availability": [{"service": "netflix", "type": "subscription", "link": "l"}]})
+    c.upsert({"id": "gone", "_pk": "us", "country": "us", "title": "Gone", "rating": 99,
+              "poster": {"url": "http://p/2.jpg"}, "overview": "y",
+              "availability": [{"service": "netflix", "type": "subscription",
+                                "link": "l", "expiresOn": past}]})
+    titles = {f["title"] for f in repo.deck("us", ["netflix"], 10)}
+    assert titles == {"Live"}  # the expired film is dropped even though it's higher-rated
 
 
 def test_deck_filters_by_service_and_keeps_no_poster() -> None:

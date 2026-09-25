@@ -94,6 +94,17 @@ def _leaving_in_days(expires_on: Any) -> int | None:
     return days if 0 <= days <= 60 else None
 
 
+def _is_expired(expires_on: Any) -> bool:
+    """True if a known availability window has already ended — the title left the service,
+    so we must not recommend it. Missing/unknown expiry is treated as still available."""
+    if not expires_on:
+        return False
+    try:
+        return int(expires_on) < int(time.time())
+    except (TypeError, ValueError):
+        return False
+
+
 def _decisions_block(decisions: list[dict[str, Any]]) -> str:
     if not decisions:
         return "(no history yet — this is early data)"
@@ -238,8 +249,9 @@ class RecsEngine:
             sub = next((a for a in avail if a.get("type") == "subscription"), None) or (avail[0] if avail else None)
             # No-poster films stay in the pool (they render a purpose-built card in the app);
             # only unavailable films are useless. Excluding them here was shrinking the
-            # post-mood candidate pool — a leak, not a feature.
-            if sub is None:
+            # post-mood candidate pool — a leak, not a feature. But drop titles whose window
+            # has already closed (left the service) — never recommend something you can't watch.
+            if sub is None or _is_expired(sub.get("expiresOn")):
                 continue
             r["_service"] = sub.get("service")
             r["_link"] = sub.get("link") or ""

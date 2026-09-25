@@ -63,3 +63,13 @@ def test_mrr_first_relevant_position() -> None:
     assert mrr([0, 1, 2, 3]) == pytest.approx(1 / 3)  # first >=2 at index 2
     assert mrr([3]) == pytest.approx(1.0)
     assert mrr([0, 1, 1]) == 0.0
+
+
+def test_is_expired_helper() -> None:
+    import time as _t
+
+    from wsww_recs.engine import _is_expired
+    assert _is_expired(int(_t.time()) - 100) is True     # window closed
+    assert _is_expired(int(_t.time()) + 100_000) is False  # still available
+    assert _is_expired(None) is False and _is_expired("") is False
+    assert _is_expired("garbage") is False

@@ -23,6 +23,16 @@ def _leaving_in_days(expires_on: Any) -> int | None:
     return days if 0 <= days <= 60 else None
 
 
+def _is_expired(expires_on: Any) -> bool:
+    """True if a known availability window has already ended (title left the service)."""
+    if not expires_on:
+        return False
+    try:
+        return int(expires_on) < int(time.time())
+    except (TypeError, ValueError):
+        return False
+
+
 class CatalogRepo:
     def __init__(self, container: ContainerLike) -> None:
         self._c = container
@@ -42,7 +52,7 @@ class CatalogRepo:
             sub = next((a for a in avail if a.get("type") == "subscription"), None) or (
                 avail[0] if avail else None
             )
-            if sub is None:
+            if sub is None or _is_expired(sub.get("expiresOn")):
                 continue
             # No-poster films stay in the deck (the app renders a purpose-built card for them).
             poster = (r.get("poster") or {}).get("url") or ""
