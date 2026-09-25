@@ -2,13 +2,13 @@
 // including the "Opening …" toast and the Empty pattern.
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { Blend, Body, Headline, Screen, TopRow } from "../primitives";
+import { Body, Headline, Screen, TopRow } from "../primitives";
+import { Mascot } from "../Mascot";
 import { Button, IconButton } from "../controls";
 import { ListRow, SectionLabel } from "../surfaces";
 import { Poster } from "../poster";
 import { ConvertNudge } from "./ConvertNudge";
 import { useTheme } from "../tokens";
-import type { MoodHue } from "../tokens";
 import type { Film } from "../../films";
 import { formatRuntime, serviceLabel } from "../../films";
 
@@ -17,8 +17,8 @@ const tintFor = (id: string) => TINTS[[...id].reduce((a, c) => a + c.charCodeAt(
 const subtitleOf = (f: Film) =>
   `${serviceLabel(f.service)} · ${formatRuntime(f.runtimeMin)}${f.leavingInDays ? ` · leaves in ${f.leavingInDays} days` : ""}`;
 
-export function ShortlistScreen({ films, onRemove, onWatch, showNudge = false, onNudgeSignIn, onNudgeDismiss }: {
-  films: Film[]; onRemove: (id: string) => void; onWatch: (f: Film) => void;
+export function ShortlistScreen({ films, onRemove, onWatch, onBrowse, showNudge = false, onNudgeSignIn, onNudgeDismiss }: {
+  films: Film[]; onRemove: (id: string) => void; onWatch: (f: Film) => void; onBrowse?: () => void;
   showNudge?: boolean; onNudgeSignIn?: () => void; onNudgeDismiss?: () => void;
 }) {
   const t = useTheme();
@@ -49,9 +49,10 @@ export function ShortlistScreen({ films, onRemove, onWatch, showNudge = false, o
 
       {empty ? (
         <View style={{ flex: 1, justifyContent: "center", gap: t.space[4], paddingBottom: 80 }}>
-          <Blend hues={["coral", "lilac", "lagoon"] as MoodHue[]} size={28} style={{ opacity: 0.9 }} />
+          <Mascot state="empty" size={96} />
           <Headline size="l">Nothing shortlisted yet.</Headline>
           <Body size="l">Swipe right on anything in the deck and it lands here, sorted by how sure you were.</Body>
+          {onBrowse ? <View><Button variant="primary" onPress={onBrowse}>Deal ten</Button></View> : null}
         </View>
       ) : (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: t.space[8] }} showsVerticalScrollIndicator={false}>

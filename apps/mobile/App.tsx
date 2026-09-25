@@ -274,6 +274,7 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
                 films={shortlist}
                 onRemove={(id) => setShortlist((p) => p.filter((f) => f.id !== id))}
                 onWatch={(f) => f.link && Linking.openURL(f.link).catch(() => {})}
+                onBrowse={() => setTab("tonight")}
                 showNudge={guest && !isSignedIn && shortlist.length >= 3 && !dismissedNudges.shortlist}
                 onNudgeSignIn={openSignIn}
                 onNudgeDismiss={() => dismissNudge("shortlist")}

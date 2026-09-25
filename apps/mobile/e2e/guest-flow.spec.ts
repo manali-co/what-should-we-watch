@@ -101,6 +101,16 @@ test.describe("guest flow (web)", () => {
     // …and the "we've learned a fair bit about you" nudge must not appear before we have.
     await expect(page.getByText("This is only on this phone")).toHaveCount(0);
   });
+
+  test("empty shortlist shows the Disco empty-state with a Deal ten CTA", async ({ page }) => {
+    await enterAsGuest(page);
+    await completeOnboarding(page);
+    await page.getByTestId("tab-shortlist").click();
+    await expect(page.getByText("Nothing shortlisted yet.")).toBeVisible({ timeout: 15_000 });
+    // The CTA returns to Tonight (the mood screen).
+    await page.getByText("Deal ten", { exact: true }).click();
+    await expect(page.getByText(/feels like/)).toBeVisible({ timeout: 10_000 });
+  });
 });
 
 test.describe("Disco avatar picker (web)", () => {
