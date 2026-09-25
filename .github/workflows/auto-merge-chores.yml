@@ -1,0 +1,61 @@
+name: Auto-merge chores
+
+# Auto-merge low-risk chore PRs once OUR build + CI (the "CI" workflow) has passed for the
+# PR's head commit. Scope is deliberately narrow:
+#   - docs / config / chore-branch PRs (chore/*, or a "chore:"/"docs:" title), and dep bumps.
+# EXCLUDED on purpose:
+#   - release-please release PRs ("chore(main): release …" / release-please--* branches). Those
+#     cut package releases, and an api release triggers deploy-prod in release.yml — they must
+#     stay a deliberate, manual merge until prod is provisioned.
+# Gating is exactly "our build + CI passed": this only runs on a successful CI workflow_run.
+# Note: the merge is performed by GITHUB_TOKEN, which by design does NOT trigger further
+# workflow runs — fine here, since these chores need no downstream deploy.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge the chore PR whose CI just passed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          # The PR whose head is the commit CI just ran on (untrusted fields read via jq, never
+          # interpolated into the shell).
+          pr=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" \
+                 --jq 'map(select(.state == "open")) | .[0].number // empty')
+          if [ -z "$pr" ]; then echo "No open PR for $HEAD_SHA — nothing to merge."; exit 0; fi
+
+          json=$(gh pr view "$pr" --repo "$REPO" --json author,headRefName,title,isDraft)
+          author=$(printf '%s' "$json" | jq -r '.author.login')
+          head=$(printf '%s'   "$json" | jq -r '.headRefName')
+          title=$(printf '%s'  "$json" | jq -r '.title')
+          draft=$(printf '%s'  "$json" | jq -r '.isDraft')
+
+          chore=false
+          case "$head"  in chore/*) chore=true ;; esac
+          case "$title" in chore:*|"chore("*|docs:*|"docs("*|build:*|"build("*|ci:*|"ci("*) chore=true ;; esac
+          case "$author" in dependabot*|renovate*) chore=true ;; esac
+          # Never auto-merge release-please release PRs (they cut releases / deploy prod).
+          case "$head"  in release-please--*) chore=false ;; esac
+          case "$title" in "chore(main): release"*|"chore: release"*) chore=false ;; esac
+
+          if [ "$draft" = "true" ] || [ "$chore" != "true" ]; then
+            echo "PR #$pr ('$title') is not an auto-mergeable chore — leaving it."
+            exit 0
+          fi
+
+          echo "Auto-merging chore PR #$pr: $title"
+          gh pr merge "$pr" --repo "$REPO" --squash --delete-branch=false \
+            || echo "Could not merge #$pr (conflict / not mergeable) — leaving it for reconciliation."
