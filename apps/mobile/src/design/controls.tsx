@@ -1,6 +1,6 @@
 // Interactive controls, ported 1:1 from the design's core components (Pill, Button, Segmented).
 import { ReactNode, useRef, useState } from "react";
-import { Animated, Easing, Pressable, StyleProp, Text, TextStyle, View, ViewStyle } from "react-native";
+import { ActivityIndicator, Animated, Easing, Pressable, StyleProp, Text, TextStyle, View, ViewStyle } from "react-native";
 import { useTheme } from "./tokens";
 import type { MoodHue } from "./tokens";
 
@@ -51,9 +51,9 @@ type Variant = "primary" | "secondary" | "ghost" | "outline" | "destructive" | "
 
 /** Button — the one action per screen. Primary is ink; mood hues never appear here. */
 export function Button({
-  variant = "primary", size = "md", full = false, disabled = false, icon, children, onPress, style,
+  variant = "primary", size = "md", full = false, disabled = false, loading = false, icon, children, onPress, style,
 }: {
-  variant?: Variant; size?: "sm" | "md" | "lg"; full?: boolean; disabled?: boolean;
+  variant?: Variant; size?: "sm" | "md" | "lg"; full?: boolean; disabled?: boolean; loading?: boolean;
   icon?: ReactNode; children: ReactNode; onPress?: () => void; style?: StyleProp<ViewStyle>;
 }) {
   const t = useTheme();
@@ -74,19 +74,19 @@ export function Button({
       onPress={onPress}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
-      disabled={disabled}
+      disabled={disabled || loading}
       style={[
         {
           flexDirection: "row", alignItems: "center", justifyContent: "center", gap: t.space[2],
           height: h, paddingHorizontal: size === "sm" ? t.space[4] : t.space[6], borderRadius: t.radius.full,
           width: full ? "100%" : undefined, minWidth: t.size.hitMin,
           backgroundColor: s.bg, borderWidth: s.border ? 1 : 0, borderColor: s.border,
-          opacity: disabled ? 0.4 : 1, transform: [{ scale: pressed && !disabled ? 0.97 : 1 }],
+          opacity: disabled && !loading ? 0.4 : 1, transform: [{ scale: pressed && !disabled ? 0.97 : 1 }],
         },
         style,
       ]}
     >
-      {icon ? <View style={{ width: 18, height: 18, alignItems: "center", justifyContent: "center" }}>{icon}</View> : null}
+      {loading ? <ActivityIndicator size="small" color={s.color} /> : icon ? <View style={{ width: 18, height: 18, alignItems: "center", justifyContent: "center" }}>{icon}</View> : null}
       <Text style={[size === "lg" ? t.type.bodyL : t.type.body, { fontFamily: t.fontFamily.bodyMedium, color: s.color, letterSpacing: -0.1 }]}>{children}</Text>
     </Pressable>
   );

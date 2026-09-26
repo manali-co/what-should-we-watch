@@ -3,10 +3,11 @@ import { ReactNode } from "react";
 import { ImageBackground, StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "./tokens";
+import { Mascot } from "./Mascot";
 
 export type CardFilm = {
   title: string; year?: number | string; runtime?: string; service: string;
-  leavingInDays?: number | null; why?: string; posterUrl?: string; tint?: string; posterMissing?: boolean;
+  leavingInDays?: number | null; why?: string; posterUrl?: string; tint?: string; posterMissing?: boolean; noTrailer?: boolean;
 };
 
 /** Poster — 2:3 artwork slot. Real image when posterUrl is given, else a toned placeholder
@@ -19,15 +20,14 @@ export function Poster({ title, tint = "#3E6B6F", posterUrl, missing = false, wi
   const noArt = missing || !posterUrl;
   const box: ViewStyle = { width, height, borderRadius: r, overflow: "hidden", backgroundColor: noArt ? t.color.surfaceRaised : tint };
   if (!noArt) return <ImageBackground source={{ uri: posterUrl }} style={box} imageStyle={{ borderRadius: r }} />;
-  // No-poster treatment (#49), 1:1 with the design's Poster(missing): on the raised surface, a
-  // centered dashed 2:3 mark, the title in display type, and a "No poster yet" micro (≥90px).
+  // No-poster treatment (#49/#87), 1:1 with the design's NoPoster(compact): on the raised
+  // surface, Disco in its sheepish `noposter` pose plus a "No poster yet" micro when there's
+  // room (≥64px). The title is carried by the list row/caption, not repeated here.
   const w = width ?? 44;
-  const iconW = Math.max(10, w * 0.22);
   return (
-    <View style={[box, { alignItems: "center", justifyContent: "center", padding: w * 0.08, gap: Math.max(4, w * 0.04) }]}>
-      <View style={{ width: iconW, height: iconW * 1.5, borderRadius: t.radius.xs, borderWidth: 1.5, borderColor: t.color.inkTertiary, borderStyle: "dashed" }} />
-      <Text numberOfLines={3} style={{ fontFamily: t.fontFamily.display, fontSize: Math.max(11, Math.min(30, w * 0.13)), lineHeight: Math.max(12, Math.min(33, w * 0.14)), letterSpacing: -0.3, color: t.color.ink, textAlign: "center" }}>{title}</Text>
-      {w >= 90 ? <Text style={[t.type.micro, { color: t.color.inkTertiary }]}>No poster yet</Text> : null}
+    <View style={[box, { alignItems: "center", justifyContent: "center", padding: w * 0.06, gap: Math.max(4, w * 0.04) }]}>
+      <Mascot state="noposter" size={w * 0.7} />
+      {w >= 64 ? <Text style={[t.type.micro, { color: t.color.inkTertiary, textAlign: "center" }]}>No poster yet</Text> : null}
     </View>
   );
 }
@@ -72,7 +72,7 @@ export function Stamp({ kind, opacity }: { kind: StampKind; opacity: number }) {
 /** PosterCard — the deck card. Full-bleed poster, metadata over a bottom scrim. Drag/stamps composed by the deck. */
 export function PosterCard({ film, stamp, stampOpacity = 0, compact = false, style }: { film: CardFilm; stamp?: StampKind; stampOpacity?: number; compact?: boolean; style?: StyleProp<ViewStyle> }) {
   const t = useTheme();
-  const { title, year, runtime, service, leavingInDays, why, tint, posterUrl, posterMissing } = film;
+  const { title, year, runtime, service, leavingInDays, why, tint, posterUrl, posterMissing, noTrailer } = film;
   const onPoster = posterMissing ? t.color.ink : "#F2F1EE";
   const inner = (
     <>
@@ -106,7 +106,7 @@ export function PosterCard({ film, stamp, stampOpacity = 0, compact = false, sty
         <ImageBackground source={{ uri: posterUrl }} style={{ flex: 1 }} resizeMode="cover">{inner}</ImageBackground>
       ) : (
         <View style={{ flex: 1 }}>
-          {posterMissing ? <MissingArt /> : <PlaceholderArt title={title} />}
+          {posterMissing ? <MissingArt noTrailer={noTrailer} /> : <PlaceholderArt title={title} />}
           {inner}
         </View>
       )}
@@ -114,16 +114,30 @@ export function PosterCard({ film, stamp, stampOpacity = 0, compact = false, sty
   );
 }
 
-// Full-bleed no-artwork mark for the deck card (#49): a centered dashed 2:3 box + "No poster
-// yet", sitting above the bottom metadata (which carries the title in ink). 1:1 with the
-// design's Poster(missing), minus the centered title the design repeats (the card already
-// shows it below — repeating it reads as a bug in RN's fixed layout).
-function MissingArt() {
+// Full-bleed no-artwork mark for the deck card (#49/#87): Disco in its `noposter` pose, a short
+// line, and — since every card is tappable to a trailer — the "Tap for the trailer" cue. Sits
+// above the bottom metadata (which carries the display-L title). 1:1 with the design's NoPoster,
+// minus the centered title the design repeats: the card already shows it below, so repeating it
+// reads as a bug in RN's fixed (non container-query) layout.
+function MissingArt({ line = "Couldn’t find a poster for this one.", noTrailer = false }: { line?: string; noTrailer?: boolean }) {
   const t = useTheme();
   return (
-    <View style={[StyleSheet.absoluteFill as ViewStyle, { alignItems: "center", justifyContent: "center", gap: 12, paddingBottom: 96 }]}>
-      <View style={{ width: 64, height: 96, borderRadius: t.radius.sm, borderWidth: 1.5, borderColor: t.color.inkTertiary, borderStyle: "dashed" }} />
-      <Text style={[t.type.micro, { color: t.color.inkTertiary }]}>No poster yet</Text>
+    <View style={[StyleSheet.absoluteFill as ViewStyle, { alignItems: "center", justifyContent: "center", gap: 14, paddingHorizontal: 34, paddingBottom: 150 }]}>
+      <Mascot state="noposter" size={132} />
+      <Text style={[t.type.body, { color: t.color.inkSecondary, textAlign: "center", maxWidth: 260 }]}>{line}</Text>
+      {!noTrailer ? <TrailerCue /> : null}
+    </View>
+  );
+}
+
+// The "Tap for the trailer" cue — a hairline pill with a small play triangle. 1:1 with the
+// design's NoPoster cue; shown on no-poster cards, where there's no art to invite the tap.
+function TrailerCue() {
+  const t = useTheme();
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 34, paddingLeft: 12, paddingRight: 14, borderRadius: 999, borderWidth: 1, borderColor: t.color.hairlineStrong, marginTop: 4 }}>
+      <View style={{ width: 0, height: 0, borderTopWidth: 5, borderBottomWidth: 5, borderLeftWidth: 8, borderTopColor: "transparent", borderBottomColor: "transparent", borderLeftColor: t.color.ink }} />
+      <Text style={[t.type.label, { color: t.color.ink }]}>Tap for the trailer</Text>
     </View>
   );
 }
