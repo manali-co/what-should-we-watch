@@ -27,6 +27,7 @@ import { AccountScreen } from "./src/design/screens/AccountScreen";
 import { AvatarPickerScreen } from "./src/design/screens/AvatarPickerScreen";
 import type { AvatarConfig } from "./src/design/DiscAvatar";
 import { GateSheet, GateFeature } from "./src/design/screens/GateSheet";
+import { FeedbackSheet } from "./src/design/screens/FeedbackSheet";
 
 type Tab = "tonight" | "shortlist" | "taste" | "settings";
 // Per-tab glyphs, 1:1 with the design's TabBar (Account.jsx). Glyph placeholders → the design
@@ -116,6 +117,7 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
   const [avatar, setAvatar] = useState<AvatarConfig | null>(null);
   const [showAvatar, setShowAvatar] = useState(false);
   const [gate, setGate] = useState<GateFeature | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [signInOverlay, setSignInOverlay] = useState(false);
   // The deck/thinking flow is full-screen (tab bar hidden), matching the design.
   const [immersive, setImmersive] = useState(false);
@@ -279,6 +281,7 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
                 avatar={avatar}
                 onOpenAvatar={() => setShowAvatar(true)}
                 country={country}
+                onSendFeedback={() => setShowFeedback(true)}
               />
             )}
             {tab === "shortlist" && (
@@ -313,6 +316,7 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
                 onLogout={logout}
                 onDelete={deleteAccount}
                 onOpenTaste={() => setTab("taste")}
+                onSendFeedback={() => setShowFeedback(true)}
                 themePref={themePref}
                 onThemePref={onThemePref}
                 provider={provider}
@@ -335,6 +339,7 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
             </View>
           )}
           <GateSheet feature={gate} onSignIn={openSignIn} onReset={resetLearned} onClose={() => setGate(null)} />
+          <FeedbackSheet open={showFeedback} onClose={() => setShowFeedback(false)} signedIn={!!isSignedIn} />
         </>
       )}
     </SafeAreaView>

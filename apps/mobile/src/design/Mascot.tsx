@@ -12,7 +12,7 @@ import Animated, { Easing, EasingFunctionFactory, SharedValue, useAnimatedStyle,
 import { useTheme } from "./tokens";
 import type { MoodHue } from "./tokens";
 
-export type MascotState = "idle" | "thinking" | "found" | "surprise" | "empty" | "error" | "celebrate";
+export type MascotState = "idle" | "thinking" | "found" | "surprise" | "empty" | "error" | "celebrate" | "noposter";
 
 type Disc = { x?: number; y?: number; sx?: number; sy?: number; rotate?: number; blob?: number };
 type Eyes = { x?: number; y?: number; sx?: number; sy?: number; rotate?: number };
@@ -35,6 +35,9 @@ const STATES: Record<MascotState, Face> = {
   empty: { lead: "lilac", mouth: { shape: "frown", scale: 0.8, y: 6 }, eyes: { sy: 0.45, y: 4 }, discs: [{ y: 14, sx: 1.08, sy: 0.84 }, { x: -10, y: 16, sx: 1.22, sy: 0.74 }, { x: 10, y: 16, sx: 1.22, sy: 0.74 }], accent: "sag" },
   error: { lead: "coral", mouth: { shape: "line", scale: 0.8, rotate: -7, y: 6 }, eyes: { rotate: -7, y: 10, x: -6, sy: 0.3 }, discs: [{ x: -8, y: -2, sx: 0.9, sy: 1.1, rotate: -14 }, { x: -6, y: 6, sx: 1.1, sy: 0.92, rotate: 10 }, { x: 14, y: 2, sx: 0.96, sy: 1.04, rotate: 18 }], accent: "shake" },
   celebrate: { lead: "coral", mouth: { shape: "grin", scale: 1.3 }, eyes: { sy: 0.45, y: -10, rotate: -4 }, discs: [{ sx: 0.9, sy: 1.16 }, { sx: 0.92, sy: 1.12, rotate: -8 }, { sx: 0.92, sy: 1.12, rotate: 8 }], accent: "bounce" },
+  // noposter (#87): a sheepish, still-searching Disco — lilac leads, a small off-kilter smile,
+  // eyes peeking sideways. Discs drift idly (blob). "scan" carries the side-to-side eye search.
+  noposter: { lead: "lilac", mouth: { shape: "smile", scale: 0.55, x: 22, rotate: 8, y: 4 }, eyes: { sy: 0.82, y: 8 }, discs: [{ x: -6, y: 4, sx: 1.06, sy: 0.96, rotate: -10, blob: 1 }, { x: -4, y: 2, sx: 0.96, sy: 1.04, rotate: 8, blob: 1 }, { x: 10, y: -6, sx: 1.02, sy: 1.02, rotate: 14, blob: 1 }], accent: "scan" },
 };
 
 // Per-pair morph timing (ms, easing, and how fast the face lands vs the body). Mirrors the
@@ -55,6 +58,7 @@ function transitionFor(from: MascotState, to: MascotState): Tr {
     "found>celebrate": { ms: 700, ease: EASE.overshoot, face: 0.7 },
   };
   if (T[key]) return T[key];
+  if (to === "noposter") return { ms: 600, ease: EASE.standard, face: 0.8 };
   if (to === "surprise") return { ms: 380, ease: EASE.overshoot, face: 0.5 };
   if (to === "empty") return { ms: 1100, ease: EASE.slow, face: 0.9 };
   if (to === "error") return { ms: 400, ease: EASE.stumble, face: 0.6 };

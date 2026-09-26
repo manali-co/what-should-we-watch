@@ -9,6 +9,7 @@ import { ListRow, SectionLabel } from "../surfaces";
 import { Sheet } from "../sheet";
 import { useTheme } from "../tokens";
 import { SERVICES } from "../data";
+import { APP_VERSION } from "../../api";
 import type { GateFeature } from "./GateSheet";
 
 type Provider = "google" | "apple" | "email";
@@ -16,14 +17,14 @@ type Provider = "google" | "apple" | "email";
 export function SettingsScreen({
   isGuest = false,
   services, onToggleService, onReset,
-  onOpenAccount, onSignIn, onGate, onExport, onLogout, onDelete, onOpenTaste, onReplayTutorial,
+  onOpenAccount, onSignIn, onGate, onExport, onLogout, onDelete, onOpenTaste, onReplayTutorial, onSendFeedback,
   country = "United States", provider, email, displayName,
   themePref = "dark", onThemePref,
 }: {
   isGuest?: boolean;
   services: string[]; onToggleService: (id: string) => void; onReset: () => void;
   onOpenAccount: () => void; onSignIn: () => void; onGate: (f: GateFeature) => void;
-  onExport?: () => void; onLogout?: () => void; onDelete?: () => void; onOpenTaste?: () => void; onReplayTutorial?: () => void;
+  onExport?: () => void; onLogout?: () => void; onDelete?: () => void; onOpenTaste?: () => void; onReplayTutorial?: () => void; onSendFeedback?: () => void;
   country?: string; provider?: Provider; email?: string; displayName?: string;
   themePref?: "system" | "dark" | "light"; onThemePref?: (p: "system" | "dark" | "light") => void;
 }) {
@@ -107,10 +108,15 @@ export function SettingsScreen({
         <ListRow title="Ask how it went" subtitle="The morning after you tap Watch now" trailing={<Switch checked={followUp} onChange={setFollowUp} />} />
         <ListRow title="Around" value="10:00" chevron onPress={() => {}} last />
 
-        {onReplayTutorial ? (
+        {onReplayTutorial || onSendFeedback ? (
           <>
             <SectionLabel>Help</SectionLabel>
-            <ListRow title="How swiping works" subtitle="Replay the four swipes and tap-for-trailer" chevron onPress={onReplayTutorial} last />
+            {onReplayTutorial ? (
+              <ListRow title="How swiping works" subtitle="Replay the four swipes and tap-for-trailer" chevron onPress={onReplayTutorial} last={!onSendFeedback} />
+            ) : null}
+            {onSendFeedback ? (
+              <ListRow title="Send feedback" subtitle="Report a bug or tell us what you think" chevron onPress={onSendFeedback} last />
+            ) : null}
           </>
         ) : null}
 
@@ -121,7 +127,7 @@ export function SettingsScreen({
         {member && onLogout ? <ListRow title="Log out" onPress={() => setSheet("logout")} /> : null}
         <ListRow title="Delete account" destructive onPress={gateOr("delete", () => setSheet("delete"))} last />
 
-        <Body tone="tertiary" style={[t.type.caption, { marginTop: t.space[6] }]}>What Should We Watch 0.1.0 · Availability data is checked nightly for your country.</Body>
+        <Body tone="tertiary" style={[t.type.caption, { marginTop: t.space[6] }]}>What Should We Watch {APP_VERSION} · Availability data is checked nightly for your country.</Body>
       </ScrollView>
 
       {/* Log out — confirm (ported from the design's Settings sheets) */}
