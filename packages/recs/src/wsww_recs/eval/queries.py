@@ -94,7 +94,7 @@ def benchmark() -> list[VibeQuery]:
 class LadderQuery:
     id: str
     moods: list[str]
-    family: Literal["complementary", "conflicting"]
+    family: Literal["complementary", "conflicting", "random"]
     count: int
 
 
@@ -109,7 +109,8 @@ _LADDERS: list[tuple[str, str, list[str]]] = [  # (family, seed, ordered moods)
 
 
 def mood_count_ladders(max_n: int = 5) -> list[LadderQuery]:
-    """Nested ladders: for each seed, queries of length 1..max_n (prefixes of the ladder)."""
+    """Nested ladders: for each seed, queries of length 1..max_n (prefixes of the ladder).
+    Fixes the COHERENCE axis (complementary vs conflicting) while count varies."""
     out: list[LadderQuery] = []
     for family, seed, moods in _LADDERS:
         for n in range(1, min(max_n, len(moods)) + 1):
@@ -117,4 +118,35 @@ def mood_count_ladders(max_n: int = 5) -> list[LadderQuery]:
                 id=f"{family}:{seed}:n{n}", moods=moods[:n],
                 family=family, count=n,  # type: ignore[arg-type]
             ))
+    return out
+
+
+# A neutral pool for the pure COUNT axis: random N-subsets disentangle "how many moods"
+# from "which specific moods / who authored the family label" (the ladders' confound).
+_RANDOM_POOL = [
+    "cozy", "big laughs", "mind-bender", "slow burn", "properly scary", "feel-good",
+    "date night", "heist energy", "dark and twisty", "nostalgic", "edge of the seat",
+    "a proper epic", "whodunit", "rainy Sunday", "outer space", "sharp satire",
+]
+
+
+def mood_count_random(per_count: int = 5, max_n: int = 5, rng_seed: int = 7) -> list[LadderQuery]:
+    """Deterministically sample `per_count` distinct random N-subsets from a fixed pool for
+    each N=1..max_n (family="random"). Averaging over many random subsets per N isolates the
+    count effect from mood identity, complementing the coherence ladders."""
+    import random as _random
+
+    rng = _random.Random(rng_seed)
+    out: list[LadderQuery] = []
+    for n in range(1, min(max_n, len(_RANDOM_POOL)) + 1):
+        seen: set[tuple[str, ...]] = set()
+        attempts = 0
+        while len(seen) < per_count and attempts < per_count * 40:
+            attempts += 1
+            subset = tuple(sorted(rng.sample(_RANDOM_POOL, n)))
+            if subset in seen:
+                continue
+            seen.add(subset)
+            out.append(LadderQuery(
+                id=f"random:n{n}:{len(seen)}", moods=list(subset), family="random", count=n))
     return out

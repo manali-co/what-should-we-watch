@@ -3,7 +3,9 @@ their shape: nested ladders (N differs from N-1 by one added mood), both coheren
 families present, counts 1..N, and the stable benchmark still emitting all three shapes."""
 from __future__ import annotations
 
-from wsww_recs.eval.queries import benchmark, mood_count_ladders
+from itertools import pairwise
+
+from wsww_recs.eval.queries import benchmark, mood_count_ladders, mood_count_random
 
 
 def test_benchmark_has_all_three_shapes() -> None:
@@ -26,7 +28,7 @@ def test_mood_count_ladders_are_nested_prefixes() -> None:
         for q in seq:
             assert q.count == len(q.moods)
         # each step adds exactly one mood on top of the previous (nested)
-        for prev, cur in zip(seq, seq[1:]):
+        for prev, cur in pairwise(seq):
             assert cur.moods[: prev.count] == prev.moods
             assert len(cur.moods) == prev.count + 1
 
@@ -34,3 +36,15 @@ def test_mood_count_ladders_are_nested_prefixes() -> None:
 def test_mood_count_ladders_respects_max_n() -> None:
     assert max(q.count for q in mood_count_ladders(max_n=3)) == 3
     assert all(q.count <= 3 for q in mood_count_ladders(max_n=3))
+
+
+def test_mood_count_random_is_deterministic_and_well_formed() -> None:
+    a = mood_count_random(per_count=4, max_n=5, rng_seed=7)
+    b = mood_count_random(per_count=4, max_n=5, rng_seed=7)
+    assert [q.id for q in a] == [q.id for q in b]  # deterministic for a fixed seed
+    assert all(q.family == "random" for q in a)
+    for n in range(1, 6):
+        cell = [q for q in a if q.count == n]
+        assert len(cell) == 4  # per_count distinct subsets at each N
+        assert all(len(q.moods) == n for q in cell)
+        assert len({tuple(q.moods) for q in cell}) == 4  # distinct within a count
