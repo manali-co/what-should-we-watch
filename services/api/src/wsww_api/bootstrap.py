@@ -13,7 +13,14 @@ from .settings import Settings, get_settings
 def build_deps() -> Deps:
     from .auth.jwks import APPLE_KEYS_URL, GOOGLE_KEYS_URL
     from .db import get_container
-    from .repositories import CatalogRepo, DecisionsRepo, TasteRepo, TokensRepo, UsersRepo
+    from .repositories import (
+        CatalogRepo,
+        DecisionsRepo,
+        FeedbackRepo,
+        TasteRepo,
+        TokensRepo,
+        UsersRepo,
+    )
 
     settings = get_settings()
     signer = _build_signer(settings)
@@ -24,6 +31,7 @@ def build_deps() -> Deps:
         catalog=CatalogRepo(get_container("catalog")),
         decisions=DecisionsRepo(get_container("decisions")),
         taste=TasteRepo(get_container("taste")),
+        feedback=FeedbackRepo(get_container("feedback")),
         recs=recs,
         clerk_jwks=clerk_jwks,
         tokens_repo=TokensRepo(get_container("refreshTokens")),

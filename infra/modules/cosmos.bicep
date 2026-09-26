@@ -34,6 +34,7 @@ var simpleContainers = [
   { name: 'followups', pk: '/userId' }
   { name: 'taste', pk: '/userId' }
   { name: 'refreshTokens', pk: '/userId' }
+  { name: 'feedback', pk: '/_pk' }
 ]
 
 resource containers 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-11-15' = [
