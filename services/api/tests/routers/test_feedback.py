@@ -29,7 +29,10 @@ def test_member_feedback_is_attributed() -> None:
     r = c.post(
         "/v1/feedback",
         headers={"Authorization": f"Bearer {tok}"},
-        json={"type": "idea", "message": "Add a watchlist", "app_version": "0.1.11", "platform": "ios"},
+        json={
+            "type": "idea", "message": "Add a watchlist",
+            "app_version": "0.1.11", "platform": "ios",
+        },
     )
     assert r.status_code == 201
     row = deps.feedback.recent()[0]
