@@ -20,6 +20,8 @@ const hap = (fn: () => void) => { if (Platform.OS !== "web") fn(); };
 const toCard = (f: Film, i: number): CardFilm => ({
   title: f.title, year: f.year ?? undefined, runtime: formatRuntime(f.runtimeMin), service: serviceLabel(f.service),
   leavingInDays: f.leavingInDays ?? null, why: f.why, posterUrl: f.posterUrl, tint: TINTS[i % TINTS.length],
+  // No artwork from the service → the purpose-built no-poster card (#49), not a tinted blank.
+  posterMissing: !f.posterUrl,
 });
 
 export function DeckScreen({ films, moods, onDecision, onDone, onBack, firstTime, onSeenTutorial }: {
