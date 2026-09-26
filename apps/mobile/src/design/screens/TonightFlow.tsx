@@ -1,7 +1,7 @@
 // Orchestrates the Tonight loop with real data:
 // Mood selector -> Thinking -> Deck (first-time tutorial layered on top) -> End, with empty/error states.
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { fetchDeck, fetchTaste, moment, recordDecision } from "../../api";
 import type { Film } from "../../films";
 import { serviceLabel } from "../../films";
@@ -9,6 +9,8 @@ import { countryCode, hueOf } from "../data";
 import { currentGreeting } from "../greeting";
 import type { MoodHue } from "../tokens";
 import type { AvatarConfig } from "../DiscAvatar";
+import { Micro, Screen } from "../primitives";
+import { Mascot } from "../Mascot";
 import { MoodScreen } from "./MoodScreen";
 import { PredictedMoodScreen } from "./PredictedMoodScreen";
 import { QuickRecsScreen } from "./QuickRecsScreen";
@@ -22,6 +24,10 @@ const COMPANY: Record<string, string> = { me: "solo", two: "couple", group: "fri
 // it's a guess dressed as confidence. Below this, returning users go straight to the picker
 // (the design's cold-start gate).
 const PREDICT_MIN_DECISIONS = 5;
+// The prediction is a nice-to-have fast path, not something to wait on. If taste + a deck
+// aren't ready within this budget (a cold Function ~6s, or a slow/bad network), we drop to the
+// mood picker so the user can act immediately — never a long, ambiguous spinner.
+const PREDICT_BUDGET_MS = 5000;
 
 type Phase = "predict" | "quick" | "mood" | "thinking" | "deck" | "end" | "empty" | "error";
 type Prediction = { moods: string[]; films: Film[]; because?: string };
@@ -93,28 +99,32 @@ export function TonightFlow({
   // error, or timeout falls back to the mood picker, so it never degrades the experience.
   useEffect(() => {
     if (phase !== "predict" || prediction) return;
-    let alive = true;
+    let done = false;
+    let budget: ReturnType<typeof setTimeout>;
+    // Settle exactly once — whichever finishes first: the fetch, the budget timer, or unmount.
+    const settle = (fn: () => void) => { if (done) return; done = true; clearTimeout(budget); fn(); };
+    budget = setTimeout(() => settle(() => setPhase("mood")), PREDICT_BUDGET_MS);
     (async () => {
       try {
         const taste = await fetchTaste();
         const picks = taste.topMoods.slice(0, 2);
-        if (!alive) return;
-        if (taste.total < PREDICT_MIN_DECISIONS || picks.length === 0) { setPhase("mood"); return; }
+        if (done) return;
+        if (taste.total < PREDICT_MIN_DECISIONS || picks.length === 0) { settle(() => setPhase("mood")); return; }
         const deck = await fetchDeck({ services, moods: picks, company: "solo", country: countryCode(country) });
-        if (!alive) return;
+        if (done) return;
         const seen = new Set(seenIds ?? []);
         const fresh = deck.filter((f) => !seen.has(f.id));
-        if (fresh.length < 3) { setPhase("mood"); return; } // not enough to feel confident
+        if (fresh.length < 3) { settle(() => setPhase("mood")); return; } // not enough to feel confident
         const p = taste.patterns[0];
         const because = p
           ? `${p.signal} — you lean ${p.moods.slice(0, 2).join(" and ")}.`
           : `You've been saying yes to ${picks.join(" and ")} lately.`;
-        setPrediction({ moods: picks, films: fresh, because });
+        settle(() => setPrediction({ moods: picks, films: fresh, because }));
       } catch {
-        if (alive) setPhase("mood");
+        settle(() => setPhase("mood"));
       }
     })();
-    return () => { alive = false; };
+    return () => { done = true; clearTimeout(budget); };
   }, [phase, prediction, services, country, seenIds]);
 
   // Advance once BOTH the thinking animation and the fetch have finished (no stale closures).
@@ -147,7 +157,12 @@ export function TonightFlow({
         onPickMyself={() => setPhase("mood")}
       />
     ) : (
-      <View style={styles.loading}><ActivityIndicator color="#8A8A8E" /></View>
+      <Screen>
+        <View style={styles.loading}>
+          <Mascot state="thinking" size={72} />
+          <Micro style={{ marginTop: 14 }}>One sec — reading your taste…</Micro>
+        </View>
+      </Screen>
     );
 
   if (phase === "quick" && prediction)
