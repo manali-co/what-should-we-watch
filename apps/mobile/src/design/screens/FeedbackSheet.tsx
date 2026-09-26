@@ -2,7 +2,7 @@
 // FeedbackSheet. A bottom sheet in Disco's first-person voice: the intelligence layer passing
 // a note to the team. Opened from Settings › Send feedback and from "Report this" on our-fault
 // error states. Works for guests and members; the app version + device attach automatically.
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { Platform, TextInput, View } from "react-native";
 import { Sheet } from "../sheet";
 import { Button, Segmented } from "../controls";
@@ -22,43 +22,56 @@ const TYPES: { value: string; label: string }[] = [
 
 const META = `WSWW ${APP_VERSION} · ${Platform.OS === "ios" ? "iOS" : "Android"} ${String(Platform.Version)}`;
 
-export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function FeedbackSheet({ open, onClose, signedIn = false }: { open: boolean; onClose: () => void; signedIn?: boolean }) {
   const t = useTheme();
+  // The component stays mounted across open/close (Sheet toggles a Modal), so state persists
+  // on its own — which is exactly what "Keep it for later" needs. We only clear on a deliberate
+  // discard (Cancel / Done). `reqId` guards against a request from an earlier sheet session
+  // settling after the user has closed or reopened: a stale result is ignored.
   const [type, setType] = useState<FeedbackType>("bug");
   const [text, setText] = useState("");
   const [status, setStatus] = useState<Status>("idle");
-
-  // Fresh each time the sheet opens.
-  useEffect(() => {
-    if (open) { setType("bug"); setText(""); setStatus("idle"); }
-  }, [open]);
+  const reqId = useRef(0);
 
   const trimmed = text.trim();
   const canSend = trimmed.length > 0 && status !== "sending";
 
+  // Close the sheet. `keep` preserves the draft (a failed note the user chose to keep, or an
+  // accidental scrim-dismiss of one); otherwise the next open starts fresh. Either way, any
+  // in-flight request is invalidated so it can't flip state after we've closed.
+  const finish = (keep: boolean) => {
+    reqId.current += 1;
+    if (!keep) { setType("bug"); setText(""); }
+    setStatus("idle");
+    onClose();
+  };
+
   const send = async () => {
     if (!canSend) return;
+    const id = (reqId.current += 1);
     setStatus("sending");
     try {
       await submitFeedback({ type, message: trimmed });
-      setStatus("sent");
+      if (reqId.current === id) setStatus("sent");
     } catch {
-      setStatus("error"); // the note is kept in `text` so they can retry
+      if (reqId.current === id) setStatus("error"); // the note is kept so they can retry
     }
   };
 
   const title = status === "sent" ? null : status === "error" ? "Couldn’t send." : "Tell me what happened.";
+  // Only promise an email follow-up to members — a guest gave us no email to reach them at.
+  const willEmail = signedIn && type === "bug";
 
   return (
-    <Sheet open={open} title={title} onClose={onClose}>
+    <Sheet open={open} title={title} onClose={() => finish(status === "error")}>
       {status === "sent" ? (
         <View style={{ alignItems: "center", gap: t.space[3], paddingTop: t.space[2] }}>
           <Mascot state="celebrate" size={88} />
           <Headline size="m" style={{ textAlign: "center" }}>Thanks — we got it.</Headline>
           <Body style={{ textAlign: "center" }}>
-            I’ve passed it straight to the team.{type === "bug" ? " If we need more, we’ll ask by email." : ""}
+            I’ve passed it straight to the team.{willEmail ? " If we need more, we’ll ask by email." : ""}
           </Body>
-          <Button variant="primary" size="lg" full onPress={onClose} style={{ marginTop: t.space[3] }}>Done</Button>
+          <Button variant="primary" size="lg" full onPress={() => finish(false)} style={{ marginTop: t.space[3] }}>Done</Button>
         </View>
       ) : (
         <View style={{ gap: t.space[4] }}>
@@ -103,7 +116,7 @@ export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () =>
             <Button variant="primary" size="lg" full disabled={!canSend} loading={status === "sending"} onPress={send}>
               {status === "sending" ? "Sending…" : status === "error" ? "Try again" : "Send"}
             </Button>
-            <Button variant="ghost" full onPress={onClose}>{status === "error" ? "Keep it for later" : "Cancel"}</Button>
+            <Button variant="ghost" full onPress={() => finish(status === "error")}>{status === "error" ? "Keep it for later" : "Cancel"}</Button>
           </View>
         </View>
       )}

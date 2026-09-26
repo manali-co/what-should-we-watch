@@ -339,7 +339,7 @@ function Root({ themePref, onThemePref }: { themePref: ThemePref; onThemePref: (
             </View>
           )}
           <GateSheet feature={gate} onSignIn={openSignIn} onReset={resetLearned} onClose={() => setGate(null)} />
-          <FeedbackSheet open={showFeedback} onClose={() => setShowFeedback(false)} />
+          <FeedbackSheet open={showFeedback} onClose={() => setShowFeedback(false)} signedIn={!!isSignedIn} />
         </>
       )}
     </SafeAreaView>
