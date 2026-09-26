@@ -154,7 +154,7 @@ export function EmptyDeck({
 }
 
 /** API down — our side, not yours. Deck couldn't be built; shortlist still available. */
-export function ApiDown({ onRetry, onOpenShortlist }: { onRetry: () => void; onOpenShortlist?: () => void }) {
+export function ApiDown({ onRetry, onOpenShortlist, onReport }: { onRetry: () => void; onOpenShortlist?: () => void; onReport?: () => void }) {
   const t = useTheme();
   return (
     <Screen>
@@ -167,8 +167,9 @@ export function ApiDown({ onRetry, onOpenShortlist }: { onRetry: () => void; onO
         action="Try again"
         onAction={onRetry}
       />
-      <View style={{ position: "absolute", left: t.space.pageInset, right: t.space.pageInset, bottom: t.space[3] }}>
+      <View style={{ position: "absolute", left: t.space.pageInset, right: t.space.pageInset, bottom: t.space[3], gap: t.space[2] }}>
         <Button variant="secondary" full onPress={onOpenShortlist}>Open shortlist</Button>
+        {onReport ? <Button variant="ghost" full onPress={onReport}>Report this</Button> : null}
       </View>
     </Screen>
   );

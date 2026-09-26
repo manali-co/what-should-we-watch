@@ -1,9 +1,15 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { randomUUID } from "expo-crypto";
+import { Platform } from "react-native";
 import { API_BASE } from "./theme";
 import { Film } from "./films";
+import appConfig from "../app.json";
 
 const DEVICE_KEY = "wsww:device";
+
+// App version comes from app.json (the single source of truth we bump each release),
+// so a bug report always carries the exact build the friend is on.
+export const APP_VERSION: string = appConfig.expo?.version ?? "0.0.0";
 
 let authTokenGetter: (() => Promise<string | null>) | null = null;
 export function setAuthTokenGetter(fn: (() => Promise<string | null>) | null) {
@@ -125,6 +131,31 @@ export async function fetchResults(opts: {
     });
     if (!r.ok) throw new Error(`results ${r.status}`);
     return (await r.json()) as RankedResult;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// In-app feedback / bug report. Works for guests and members (auth header is
+// attached best-effort). Throws on failure so the sheet can show its error
+// state and keep the user's note. We attach the app version + platform so a
+// report is actionable; no name, email or watch history goes with it.
+export async function submitFeedback(input: { type: "bug" | "idea" | "other"; message: string }): Promise<void> {
+  const headers = { "Content-Type": "application/json", ...(await authHeaders()) };
+  const body = {
+    type: input.type,
+    message: input.message,
+    app_version: APP_VERSION,
+    platform: Platform.OS,
+    device: `${Platform.OS} ${String(Platform.Version)}`,
+  };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const r = await fetch(`${API_BASE}/v1/feedback`, {
+      method: "POST", headers, body: JSON.stringify(body), signal: ctrl.signal,
+    });
+    if (!r.ok) throw new Error(`feedback ${r.status}`);
   } finally {
     clearTimeout(timer);
   }
