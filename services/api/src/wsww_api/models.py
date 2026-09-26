@@ -62,3 +62,17 @@ class MePatch(BaseModel):
     country: str | None = None
     services: list[str] | None = None
     settings: UserSettings | None = None
+
+
+class FeedbackIn(BaseModel):
+    """A bug report or idea from inside the app. Works for guests and members."""
+    type: str = Field(default="bug")  # "bug" | "idea" | "other"
+    message: str = Field(min_length=1, max_length=4000)
+    app_version: str | None = None
+    platform: str | None = None  # "ios" | "android" | "web"
+    device: str | None = None
+
+
+class FeedbackOut(BaseModel):
+    id: str
+    ok: bool = True

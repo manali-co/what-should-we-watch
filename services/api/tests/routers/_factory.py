@@ -3,7 +3,14 @@ from wsww_api.auth.jwks import ProviderIdentity
 from wsww_api.auth.tokens import LocalEcKey, TokenSigner
 from wsww_api.db import InMemoryContainer
 from wsww_api.deps import Deps
-from wsww_api.repositories import CatalogRepo, DecisionsRepo, TasteRepo, TokensRepo, UsersRepo
+from wsww_api.repositories import (
+    CatalogRepo,
+    DecisionsRepo,
+    FeedbackRepo,
+    TasteRepo,
+    TokensRepo,
+    UsersRepo,
+)
 from wsww_api.settings import Settings
 
 
@@ -27,6 +34,7 @@ def build_app(apple_map=None, google_map=None):
         catalog=CatalogRepo(InMemoryContainer()),
         decisions=DecisionsRepo(InMemoryContainer()),
         taste=TasteRepo(InMemoryContainer()),
+        feedback=FeedbackRepo(InMemoryContainer()),
         recs=None,
         clerk_jwks=None,
         tokens_repo=TokensRepo(InMemoryContainer()),
