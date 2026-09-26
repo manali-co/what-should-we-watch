@@ -14,26 +14,20 @@ export type CardFilm = {
 export function Poster({ title, tint = "#3E6B6F", posterUrl, missing = false, width, height, radius }: { title: string; tint?: string; posterUrl?: string; missing?: boolean; width?: number; height?: number; radius?: number }) {
   const t = useTheme();
   const r = radius ?? t.radius.xs;
-  const box: ViewStyle = { width, height, borderRadius: r, overflow: "hidden", backgroundColor: missing ? t.color.surfaceRaised : tint };
-  if (posterUrl && !missing) return <ImageBackground source={{ uri: posterUrl }} style={box} imageStyle={{ borderRadius: r }} />;
+  // No artwork = explicitly `missing` OR simply no URL. Callers pass posterUrl and needn't also
+  // pass `missing` — a film with no poster is the no-poster case, everywhere Poster is used.
+  const noArt = missing || !posterUrl;
+  const box: ViewStyle = { width, height, borderRadius: r, overflow: "hidden", backgroundColor: noArt ? t.color.surfaceRaised : tint };
+  if (!noArt) return <ImageBackground source={{ uri: posterUrl }} style={box} imageStyle={{ borderRadius: r }} />;
   // No-poster treatment (#49), 1:1 with the design's Poster(missing): on the raised surface, a
-  // centered dashed 2:3 mark, the title in display type, and a "No poster yet" micro label —
-  // a purpose-built card, not a blank. (The tinted faint-title placeholder is only for the
-  // has-artwork-eventually case, kept below for non-missing.)
+  // centered dashed 2:3 mark, the title in display type, and a "No poster yet" micro (≥90px).
   const w = width ?? 44;
-  if (missing) {
-    const iconW = Math.max(10, w * 0.22);
-    return (
-      <View style={[box, { alignItems: "center", justifyContent: "center", padding: w * 0.08, gap: Math.max(4, w * 0.04) }]}>
-        <View style={{ width: iconW, height: iconW * 1.5, borderRadius: t.radius.xs, borderWidth: 1.5, borderColor: t.color.inkTertiary, borderStyle: "dashed" }} />
-        <Text numberOfLines={3} style={{ fontFamily: t.fontFamily.display, fontSize: Math.max(11, Math.min(30, w * 0.13)), lineHeight: Math.max(12, Math.min(33, w * 0.14)), letterSpacing: -0.3, color: t.color.ink, textAlign: "center" }}>{title}</Text>
-        {w >= 90 ? <Text style={[t.type.micro, { color: t.color.inkTertiary }]}>No poster yet</Text> : null}
-      </View>
-    );
-  }
+  const iconW = Math.max(10, w * 0.22);
   return (
-    <View style={box}>
-      <Text numberOfLines={3} style={{ position: "absolute", left: 4, right: 4, top: 6, fontFamily: t.fontFamily.display, fontSize: Math.max(9, w * 0.2), lineHeight: Math.max(10, w * 0.21), color: "rgba(255,255,255,0.28)", letterSpacing: -0.4 }}>{title}</Text>
+    <View style={[box, { alignItems: "center", justifyContent: "center", padding: w * 0.08, gap: Math.max(4, w * 0.04) }]}>
+      <View style={{ width: iconW, height: iconW * 1.5, borderRadius: t.radius.xs, borderWidth: 1.5, borderColor: t.color.inkTertiary, borderStyle: "dashed" }} />
+      <Text numberOfLines={3} style={{ fontFamily: t.fontFamily.display, fontSize: Math.max(11, Math.min(30, w * 0.13)), lineHeight: Math.max(12, Math.min(33, w * 0.14)), letterSpacing: -0.3, color: t.color.ink, textAlign: "center" }}>{title}</Text>
+      {w >= 90 ? <Text style={[t.type.micro, { color: t.color.inkTertiary }]}>No poster yet</Text> : null}
     </View>
   );
 }
